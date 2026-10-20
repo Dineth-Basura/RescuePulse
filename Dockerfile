@@ -1,9 +1,10 @@
-FROM openjdk:8-jdk-alpine
-VOLUME /tmp
-ARG JAVA_OPTS
-ENV JAVA_OPTS=$JAVA_OPTS
-COPY rescuepulse.jar rescuepulse.jar
-EXPOSE 3000
-ENTRYPOINT exec java $JAVA_OPTS -jar rescuepulse.jar
-# For Spring-Boot project, use the entrypoint below to reduce Tomcat startup time.
-#ENTRYPOINT exec java $JAVA_OPTS -Djava.security.egd=file:/dev/./urandom -jar rescuepulse.jar
+FROM ballerina/ballerina:2201.13.6 AS build
+WORKDIR /home/ballerina/project
+COPY --chown=ballerina:ballerina backend/src/ ./
+RUN bal build
+FROM eclipse-temurin:21-jre
+WORKDIR /app/backend/src
+COPY --from=build /home/ballerina/project/target/bin/backend.jar ./backend.jar
+COPY frontend /app/frontend
+EXPOSE 8080
+ENTRYPOINT ["java", "-jar", "backend.jar"]

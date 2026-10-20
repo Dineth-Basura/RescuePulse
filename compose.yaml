@@ -1,8 +1,14 @@
 services:
   rescuepulse:
-    image: rescuepulse
-    build:
-      context: .
-      dockerfile: ./Dockerfile
+    build: .
     ports:
-      - 3000:3000
+      - "8080:8080"
+    environment:
+      BAL_CONFIG_VAR_ADMINPASSWORD: ${RESCUEPULSE_ADMIN_PASSWORD:-}
+      BAL_CONFIG_VAR_GEMINIAPIKEY: ${GEMINI_API_KEY:-}
+      BAL_CONFIG_VAR_GEMINIMODEL: ${GEMINI_MODEL:-gemini-3.8-flash}
+    volumes:
+      - rescuepulse-data:/app/backend/src/runtime-data
+    restart: unless-stopped
+volumes:
+  rescuepulse-data:

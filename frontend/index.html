@@ -1,352 +1,66 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI-EmergencyShield</title>
-
-    <!-- Favicon -->
-    <link rel="icon" type="image/x-icon" href="assets/images/favicon.ico">
-
-    <!-- Tailwind CSS is used for rapid UI development -->
-    <script src="https://cdn.tailwindcss.com"></script>
-
-    <style>
-        /* ========================================
-        FONTS
-        ========================================
-        */
-        /* We're importing the 'Inter' font which is clean and modern, similar to the design */
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&family=Roboto+Mono:wght@400&display=swap');
-
-        /* ========================================
-        BASE STYLES
-        ========================================
-        */
-        body {
-            font-family: 'Inter', sans-serif;
-            overflow-x: hidden;
-            background-color: #0a0a14;
-        }
-
-        /* ========================================
-        MAIN CONTAINER & BACKGROUND
-        ========================================
-        */
-        #main-container {
-            background-image: url('assets/images/homepage.jpeg');
-            background-size: cover;
-            background-position: center;
-        }
-
-        /* ========================================
-        THE GLASS PANEL
-        ========================================
-        */
-        .glass-panel {
-            background: rgba(20, 20, 30, 0.4);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .panel-glow {
-            box-shadow: 0 0 40px rgba(0, 255, 255, 0.1);
-        }
-
-        /* ========================================
-        BUTTONS
-        ========================================
-        */
-        .glow-button {
-            box-shadow: 0 0 15px rgba(251, 146, 60, 0.5), 0 0 30px rgba(251, 146, 60, 0.3);
-            transition: all 0.3s ease-in-out;
-        }
-
-        .glow-button:hover {
-            transform: scale(1.05);
-            box-shadow: 0 0 25px rgba(251, 146, 60, 0.7), 0 0 45px rgba(251, 146, 60, 0.5);
-        }
-
-        /* ========================================
-        WAVY LINES DECORATION
-        ========================================
-        */
-        @keyframes draw {
-            to {
-                stroke-dashoffset: 0;
-            }
-        }
-
-        .wavy-line {
-            stroke-dasharray: 1000;
-            stroke-dashoffset: 1000;
-            animation: draw 5s ease-out forwards;
-        }
-
-        /* ========================================
-        MOBILE-RESPONSIVE ADJUSTMENTS
-        ========================================
-        */
-        @media (max-width: 768px) {
-            /* Header Adjustments */
-            header {
-                padding: 1rem;
-            }
-
-            nav .flex {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-
-            nav .space-x-8 {
-                display: none;
-            }
-
-            nav .space-x-4 {
-                display: none;
-            }
-
-            #mobile-menu {
-                width: 100%;
-                padding: 1rem;
-            }
-
-            #mobile-menu a {
-                padding: 1rem;
-                font-size: 1.125rem;
-                display: block;
-                width: 100%;
-            }
-
-            #mobile-menu-button {
-                padding: 0.5rem;
-                display: flex; /* Ensure proper layout */
-                align-items: center;
-                justify-content: center;
-            }
-
-            /* Main Content Adjustments */
-            main {
-                margin-top: 2rem;
-                padding: 0 1rem;
-            }
-
-            h1 {
-                font-size: 2rem;
-                line-height: 1.2;
-            }
-
-            p {
-                font-size: 1rem;
-                max-width: 90%;
-                line-height: 1.5;
-            }
-
-            #interactive-panel {
-                max-width: 100%;
-                padding: 0.5rem; /* Reduced padding */
-                border-radius: 1rem;
-            }
-
-            #data-readout {
-                width: 100%;
-                font-size: 0.75rem; /* Reduced from 0.875rem */
-                padding: 0.25rem; /* Reduced padding */
-                line-height: 1.2; /* Tighter line spacing */
-            }
-
-            .md:w-1/4, .md:w-3/4 {
-            width: 100%;
-        }
-
-            #map-image {
-                height: 150px; /* Reduced from 200px */
-                object-fit: cover;
-                width: 100%;
-            }
-
-            .glow-button {
-                padding: 0.5rem 1rem; /* Reduced padding */
-                font-size: 0.875rem; /* Reduced from 1rem */
-                width: 100%;
-                text-align: center;
-            }
-
-            /* Panel Header Adjustments */
-            #interactive-panel .mb-4 {
-                margin-bottom: 0.25rem; /* Reduced margin */
-            }
-
-            #interactive-panel .h-4, #interactive-panel .w-4 {
-                height: 3px; /* Reduced SVG size */
-                width: 3px;
-            }
-
-            /* Wavy Lines Adjustment */
-            .wavy-line {
-                stroke-width: 1;
-            }
-        }
-    </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>RescuePulse | Early insight. Faster response.</title>
+<link rel="icon" href="/assets/favicon.ico">
+<link rel="stylesheet" href="/dashboard.css">
+<style>.hero{display:grid;grid-template-columns:1.2fr 1fr;gap:50px;align-items:center;padding:65px 0}.hero h1{font-size:clamp(36px,5vw,65px);line-height:1.1;letter-spacing:-2px}.hero p{font-size:17px;line-height:1.8;color:#9faec4}.hero img{width:100%;max-height:440px;object-fit:contain}.hero .actions{margin:30px 0}.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}.steps .panel{padding:28px}@media(max-width:700px){.hero{grid-template-columns:1fr;padding:35px 0}.hero img{max-height:300px}.steps{grid-template-columns:1fr}}</style>
 </head>
-<body class="bg-gray-900 text-white">
-
-<!-- Main container that holds the background and all content -->
-<div id="main-container" class="relative min-h-screen w-full flex flex-col items-center justify-center p-4">
-
-    <!-- A dark overlay to ensure text is readable against the background -->
-    <div class="absolute inset-0 bg-black/50 z-0"></div>
-
-    <!-- Header / Navigation Section -->
-    <header class="absolute top-0 left-0 right-0 z-20 p-4 md:p-6">
-        <nav class="container mx-auto flex justify-between items-center">
-            <!-- Logo (now clickable to index.html) -->
-            <a href="index.html" class="flex items-center space-x-2">
-                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 14v-1m-6.08-4.92l.707-.707m9.856 0l-.707-.707M4 12H3m18 0h-1m-5.92-6.08l-.707.707m0 9.856l.707.707"></path></svg>
-                <span class="text-2xl font-bold tracking-wider">RescuePulse</span>
-            </a>
-
-            <!-- Desktop Navigation Links -->
-            <div class="hidden md:flex items-center space-x-8 text-gray-300">
-                <a href="index.html" class="text-gray-300 hover:text-white transition-colors">Home</a>
-                <a href="docs.html" class="hover:text-white transition-colors">Docs</a>
-                <a href="aboutus.html" class="hover:text-white transition-colors">About</a>
-                <a href="sign-in.html" class="hover:text-white transition-colors">Sign In</a>
-            </div>
-
-            <!-- Action Buttons -->
-            <div class="hidden md:flex items-center space-x-4">
-                <a href="sign-in.html" class="px-5 py-2 rounded-full border border-white/50 text-white hover:bg-white/10 transition-colors">Sign In</a>
-                <a href="sign-up.html" class="px-5 py-2 rounded-full bg-white text-black font-semibold hover:bg-gray-200 transition-colors">Sign Up</a>
-            </div>
-
-            <!-- Mobile Menu Button -->
-            <div class="md:hidden">
-                <button id="mobile-menu-button" class="text-white focus:outline-none" aria-label="Open menu">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
-                </button>
-            </div>
-        </nav>
-        <!-- Mobile Menu (hidden by default) -->
-        <div id="mobile-menu" class="hidden md:hidden mt-4 bg-black/30 backdrop-blur-md rounded-lg">
-            <a href="index.html" class="block py-2 px-4 text-sm hover:bg-gray-700 rounded">Home</a>
-            <a href="docs.html" class="block py-2 px-4 text-sm hover:bg-gray-700 rounded">Docs</a>
-            <a href="aboutus.html" class="block py-2 px-4 text-sm hover:bg-gray-700 rounded">About</a>
-            <a href="sign-in.html" class="block py-2 px-4 text-sm hover:bg-gray-700 rounded">Sign In</a>
-            <a href="sign-up.html" class="block py-2 px-4 text-sm hover:bg-gray-700 rounded">Sign Up</a>
-        </div>
-    </header>
-
-    <!-- Main Content Area -->
-    <main class="relative z-10 flex flex-col items-center text-center mt-32 md:mt-16">
-        <h1 class="text-5xl md:text-6xl font-bold tracking-tight">
-            AI-EmergencyShield
-        </h1>
-        <p class="mt-4 text-lg text-gray-300 max-w-2xl">
-            Disaster response platform for Sri Lanka.
-        </p>
-
-        <!-- The main interactive glass panel -->
-        <div id="interactive-panel" class="relative w-full max-w-4xl mt-10 glass-panel rounded-2xl p-4 md:p-6 panel-glow">
-            <!-- Panel Header -->
-            <div class="flex justify-between items-center text-gray-400 text-xs mb-4">
-                <div class="flex items-center space-x-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16" /></svg>
-                </div>
-                <div class="flex items-center space-x-2">
-                    <span>A</span>
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" /></svg>
-                </div>
-            </div>
-
-            <div class="flex flex-col md:flex-row gap-2 md:gap-8"> <!-- Reduced gap to 2 -->
-                <!-- Left Side Data Readout -->
-                <div class="w-full md:w-1/4 space-y-2 text-left text-sm text-gray-300 font-mono" id="data-readout"> <!-- Reduced space-y to 2 -->
-                    <p id="time">Loading...</p>
-                    <p id="metrics">Loading...</p>
-                    <p id="rainfall">Loading...</p>
-                    <p id="wind">Loading...</p>
-                    <p id="last-update">Loading...</p>
-                </div>
-
-                <!-- Map Area -->
-                <div class="relative w-full md:w-3/4 h-64 md:h-auto">
-                    <!-- CHANGED TO RELATIVE PATH -->
-                    <img src="assets/images/map.png" class="absolute inset-0 w-full h-full object-contain" alt="Map of Sri Lanka with glowing nodes" id="map-image" style="filter: drop-shadow(0 0 15px rgba(0, 255, 255, 0.5));">
-                </div>
-            </div>
-
-            <!-- Activate Shield Button -->
-            <div class="mt-4 text-center"> <!-- Reduced mt to 4 -->
-                <a href="#" id="activate-button" class="inline-block bg-orange-500 text-white font-bold text-lg px-16 py-4 rounded-full glow-button">
-                    Activate Shield
-                </a>
-            </div>
-
-        </div>
-
-        <!-- Decorative wavy lines at the bottom -->
-        <div class="absolute bottom-0 left-0 w-full h-48 opacity-20 overflow-hidden -z-10">
-            <svg class="w-full h-full" viewBox="0 0 1440 320" preserveAspectRatio="none">
-                <path class="wavy-line" fill="none" stroke="#06b6d4" stroke-width="2" d="M0,224L40,213.3C80,203,160,181,240,186.7C320,192,400,224,480,213.3C560,203,640,149,720,149.3C800,149,880,203,960,224C1040,245,1120,235,1200,208C1280,181,1360,139,1400,117.3L1440,96"></path>
-                <path class="wavy-line" style="animation-delay: 1.5s;" fill="none" stroke="#22d3ee" stroke-width="1" d="M0,160L48,176C96,192,192,224,288,218.7C384,213,480,171,576,149.3C672,128,768,128,864,149.3C960,171,1056,213,1152,213.3C1248,213,1344,171,1392,149.3L1440,128"></path>
-            </svg>
-        </div>
-    </main>
+<body>
+<header>
+<a class="brand" href="/">✚ <span>RescuePulse<small>EARLY INSIGHT. FASTER RESPONSE.</small>
+</span>
+</a>
+<nav class="actions">
+<a href="/docs.html">Help center</a>
+<a class="quiet" href="/sign-in.html">Sign in</a>
+</nav>
+</header>
+<main>
+<section class="hero">
+<div>
+<span class="badge">RESPONSE OPERATIONS FOR SRI LANKA</span>
+<h1>See the risk.<br>
+<span style="color:#ff845f">Coordinate<br>the response.</span>
+</h1>
+<p>Turn weather observations into a shared view of risk. Report incidents, track response progress, and keep your team informed in one workspace.</p>
+<div class="actions">
+<a class="primary" href="/sign-up.html">Get started →</a>
+<a class="quiet" href="/user-dashboard.html">Open response center</a>
 </div>
-
-<script>
-    // This script waits for the page to load before running.
-    document.addEventListener('DOMContentLoaded', function() {
-
-        // --- Mobile Menu Toggle ---
-        const mobileMenuButton = document.getElementById('mobile-menu-button');
-        const mobileMenu = document.getElementById('mobile-menu');
-
-        if (mobileMenuButton && mobileMenu) {
-            mobileMenuButton.addEventListener('click', function() {
-                mobileMenu.classList.toggle('hidden');
-            });
-        } else {
-            console.error("Mobile menu button or menu container not found.");
-        }
-
-        // --- Fetch Data from Ballerina ---
-        function updatePanel(data) {
-            const now = new Date();
-            const timeString = now.toLocaleTimeString('en-US', { timeZone: 'Asia/Colombo', hour12: true });
-            document.getElementById('time').textContent = `Time: ${timeString}`;
-            document.getElementById('metrics').textContent = `Metrics: ${data.metrics || 'N/A'}`;
-            document.getElementById('rainfall').textContent = `Rainfall: ${data.rainfall || 'N/A'}M`;
-            document.getElementById('wind').textContent = `Wind: ${data.wind || 'N/A'}M`;
-            document.getElementById('last-update').textContent = `Last Update: ${now.toLocaleString('en-US', { timeZone: 'Asia/Colombo' })}`;
-        }
-
-        // Fetch sample metrics (placeholder)
-        updatePanel({ metrics: 'Rain/Wind/Temp', rainfall: 10, wind: 5 });
-
-        // --- Activate Shield Button ---
-        const activateButton = document.getElementById('activate-button');
-        if (activateButton) {
-            activateButton.addEventListener('click', function(e) {
-                e.preventDefault();
-                // Now handled in /frontend/script.js calling /ai/predict under same-origin
-                (async () => {
-                    try {
-                        const res = await fetch('/ai/predict', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rainMm: 20, windKph: 15, tempC: 30, humidityPct: 65, soilSatPct: 55 }) });
-                        const data = await res.json();
-                        updatePanel({ metrics: 'Rain/Wind/Temp', rainfall: 20, wind: 15 });
-                        const mapImage = document.getElementById('map-image');
-                        mapImage.style.filter = 'drop-shadow(0 0 25px rgba(255, 0, 0, 0.7))';
-                        setTimeout(() => { mapImage.style.filter = 'drop-shadow(0 0 15px rgba(0, 255, 255, 0.5))'; }, 2000);
-                        console.log('Predicted risk', data);
-                    } catch (err) { console.error(err); }
-                })();
-            });
-        }
-    });
-</script>
-<script src="/script.js"></script>
+<span class="eyebrow">ASSESS · UNDERSTAND · RESPOND</span>
+</div>
+<div>
+<img src="/assets/images/map.png" alt="Sri Lanka map illustration">
+<p class="footnote" style="text-align:center">District overview · No live monitoring feed</p>
+</div>
+</section>
+<div class="notice">
+<span>ⓘ</span>
+<p>
+<strong>Built for coordinated response.</strong> Report incidents, assign responders, record field updates and track work through to resolution.</p>
+</div>
+<section class="steps" style="margin-top:25px">
+<article class="panel">
+<span class="eyebrow">01 / ASSESS</span>
+<h2>Explore conditions</h2>
+<p class="muted">Record weather observations for a district and review its risk index.</p>
+</article>
+<article class="panel">
+<span class="eyebrow">02 / UNDERSTAND</span>
+<h2>Explain the risk</h2>
+<p class="muted">See a bounded risk index with consistent thresholds and visible input weights.</p>
+</article>
+<article class="panel">
+<span class="eyebrow">03 / RESPOND</span>
+<h2>Track every incident</h2>
+<p class="muted">Assign responders, set deadlines and keep a clear record of every update.</p>
+</article>
+</section>
+<footer>RescuePulse · Response coordination · <a href="/docs.html">Help center</a>
+</footer>
+</main>
 </body>
 </html>

@@ -1,3 +1,4 @@
+function escapeHTML(value) { return String(value).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;", "'":"&#39;"}[c])); }
 // Minimal client-side calls to the Ballerina backend under same origin
 async function predictSample() {
   const payload = { rainMm: 12.3, windKph: 10, tempC: 29, humidityPct: 70, soilSatPct: 50 };
@@ -6,23 +7,14 @@ async function predictSample() {
 }
 
 function initUI() {
-  const btn = document.getElementById('activate-button');
-  if (btn) {
-    btn.addEventListener('click', async (e) => {
-      e.preventDefault();
-      try {
-        const resp = await predictSample();
-        alert('Risk: ' + (resp.riskScore ?? 'n/a'));
-      } catch (e) { console.error(e); }
-    });
-  }
   // Wire control panel buttons if present
   const out = document.getElementById('control-output');
   function renderKV(label, value){
+    label = escapeHTML(label); value = escapeHTML(value);
     return `<div class="flex justify-between gap-2 py-1 border-b border-white/10"><span class="text-white/70">${label}</span><span class="font-mono">${value}</span></div>`;
   }
   function renderList(title, items){
-    const rows = items.map((it)=>`<li class="py-1 border-b border-white/10">${typeof it==='string'?it:JSON.stringify(it)}</li>`).join('');
+    const rows = items.map((it)=>`<li class="py-1 border-b border-white/10">${escapeHTML(typeof it==='string'?it:JSON.stringify(it))}</li>`).join('');
     return `<div class="mt-2"><div class="font-semibold mb-1">${title}</div><ul>${rows}</ul></div>`;
   }
   function renderBadge(text, color){
@@ -41,11 +33,11 @@ function initUI() {
       const sevColor = it.severity === 'HIGH' || it.severity === 'CRITICAL' ? 'red' : it.severity === 'MEDIUM' ? 'yellow' : 'green';
       const stColor = it.status === 'OPEN' ? 'red' : it.status === 'ACK' ? 'yellow' : 'green';
       return `<tr class="border-b border-white/10">
-        <td class="py-1 font-mono text-white/80">${it.id}</td>
-        <td class="py-1">${it.location}</td>
+        <td class="py-1 font-mono text-white/80">${escapeHTML(it.id)}</td>
+        <td class="py-1">${escapeHTML(it.location)}</td>
         <td class="py-1">${renderBadge(it.severity, sevColor)}</td>
         <td class="py-1">${renderBadge(it.status, stColor)}</td>
-        <td class="py-1 text-white/60">${it.updatedAt || ''}</td>
+        <td class="py-1 text-white/60">${escapeHTML(it.updatedAt || '')}</td>
       </tr>`;
     }).join('');
     return `<div class="mt-2"><div class="font-semibold mb-2">${title}</div><table class="w-full text-xs">${head}<tbody>${body}</tbody></table></div>`;
@@ -94,10 +86,10 @@ function initUI() {
             ${renderKV('Status', data.status)}
           `;
         } else {
-          out.innerHTML = `<div class="font-semibold mb-1">${label}</div><pre class="whitespace-pre-wrap">${JSON.stringify(data, null, 2)}</pre>`;
+          out.innerHTML = `<div class="font-semibold mb-1">${label}</div><pre class="whitespace-pre-wrap">${escapeHTML(JSON.stringify(data, null, 2))}</pre>`;
         }
       } else if (typeof data === 'string') {
-        out.innerHTML = `<div class="font-semibold mb-1">${label}</div><pre class="whitespace-pre-wrap">${data}</pre>`;
+        out.innerHTML = `<div class="font-semibold mb-1">${label}</div><pre class="whitespace-pre-wrap">${escapeHTML(data)}</pre>`;
       } else {
         out.innerHTML = `<div class="font-semibold mb-1">${label}</div><pre class="whitespace-pre-wrap">${String(data)}</pre>`;
       }

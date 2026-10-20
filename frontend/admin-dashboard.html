@@ -1,59 +1,13 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>RescuePulse - Admin Dashboard</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style> body{ background:#0a0a14; color:#f0f0f5; font-family: Inter, system-ui, sans-serif } .glass{ background:rgba(20,20,30,.7); backdrop-filter: blur(16px); border:1px solid rgba(255,255,255,.1); border-radius:16px } </style>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚙️</text></svg>">
-  <script defer src="/script.js"></script>
-</head>
-<body>
-  <script>
-    (function(){
-      try {
-        const role = (localStorage.getItem('rp_role')||'').toLowerCase();
-        if (role !== 'admin') { window.location.replace('user-dashboard.html'); }
-      } catch (_) { window.location.replace('sign-in.html'); }
-    })();
-  </script>
-  <div class="min-h-screen p-6">
-    <header class="flex items-center justify-between mb-6">
-      <h1 class="text-2xl font-bold">Admin Dashboard</h1>
-      <a href="index.html" class="text-sm text-white/70 hover:text-white">← Back to Home</a>
-    </header>
-    <main class="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <section class="glass p-5">
-        <h2 class="font-semibold mb-3">Users</h2>
-        <div class="flex gap-2 mb-2">
-          <button id="btn-admin-users" class="px-3 py-2 rounded bg-slate-600/70 hover:bg-slate-500">Load Users</button>
-        </div>
-        <pre id="admin-users" class="bg-black/40 text-xs p-2 rounded max-h-64 overflow-auto"></pre>
-      </section>
-      <section class="glass p-5">
-        <h2 class="font-semibold mb-3">Logs</h2>
-        <div class="flex gap-2 mb-2">
-          <button id="btn-admin-logs-login" class="px-3 py-2 rounded bg-slate-600/70 hover:bg-slate-500">login.txt</button>
-          <button id="btn-admin-logs-users" class="px-3 py-2 rounded bg-slate-600/70 hover:bg-slate-500">users.txt</button>
-          <button id="btn-admin-logs-inc" class="px-3 py-2 rounded bg-slate-600/70 hover:bg-slate-500">incidents.txt</button>
-        </div>
-        <pre id="admin-logs" class="bg-black/40 text-xs p-2 rounded max-h-64 overflow-auto"></pre>
-      </section>
-    </main>
-  </div>
-  <script>
-    window.addEventListener('DOMContentLoaded', ()=>{
-      const usersOut = document.getElementById('admin-users');
-      const logsOut = document.getElementById('admin-logs');
-      const show = (el, data) => { el.textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2); };
-      const on = (id, fn, out) => { const el=document.getElementById(id); if (el) el.addEventListener('click', async (e)=>{ e.preventDefault(); try{ const r = await fn(); show(out, r); }catch(err){ show(out, err?.message||String(err)); } }); };
-      on('btn-admin-users', ()=>window.api.admin.users(), usersOut);
-      on('btn-admin-logs-login', ()=>window.api.admin.logs('login.txt'), logsOut);
-      on('btn-admin-logs-users', ()=>window.api.admin.logs('users.txt'), logsOut);
-      on('btn-admin-logs-inc', ()=>window.api.admin.logs('incidents.txt'), logsOut);
-    });
-  </script>
-</body>
-</html>
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>RescuePulse | Admin control center</title><link rel="icon" href="/assets/favicon.ico"><link rel="stylesheet" href="/dashboard.css"><link rel="stylesheet" href="/admin.css"><script defer src="/admin.js"></script></head>
+<body><aside class="sidebar admin-sidebar"><a class="brand" href="/">+ <span>RescuePulse<small>ADMINISTRATION</small></span></a><div class="workspace">WORKSPACE CONTROL</div><nav><a href="#admin-overview" class="selected">Overview</a><a href="#admin-incidents">Incident oversight</a><a href="#admin-people">People and access</a><a href="#admin-settings">Workspace settings</a><a href="#admin-broadcasts">Broadcasts</a><a href="#admin-audit">Audit trail</a></nav><div class="sidebar-bottom"><span class="status-dot"></span> Administrator workspace<small id="admin-identity">Verifying access...</small></div></aside>
+<div class="shell admin-shell"><header><div><span class="eyebrow">ADMINISTRATION / CONTROL CENTER</span><h1>Workspace overview</h1></div><div class="actions"><button id="admin-refresh" class="quiet">Refresh</button><button id="admin-logout" class="quiet">Sign out</button></div></header><main><div id="admin-message" role="status" aria-live="polite" class="admin-message">Verifying administrator access...</div><div id="admin-content" hidden>
+<section id="admin-overview"><div class="section-intro"><h2>Operational health</h2><span id="admin-updated" class="muted"></span></div><div class="metrics admin-metrics"><article><span>Active incidents</span><strong id="metric-open">0</strong><small>Unresolved work</small></article><article><span>Unassigned</span><strong id="metric-unassigned">0</strong><small>Needs a responder</small></article><article><span>Overdue</span><strong id="metric-overdue">0</strong><small>Past response deadline</small></article><article><span>High priority</span><strong id="metric-high">0</strong><small>High and critical reports</small></article><article><span>Active accounts</span><strong id="metric-users">0</strong><small id="metric-suspended">0 suspended</small></article><article><span>Live sessions</span><strong id="metric-sessions">0</strong><small>Unexpired sign-ins</small></article></div></section>
+<section class="panel" id="admin-incidents"><div class="panel-heading"><div><span class="eyebrow">COORDINATE</span><h2>Incident oversight <span id="queue-count" class="count">0</span></h2></div><button id="queue-export" class="quiet">Export queue</button></div><div class="filter-bar"><label>Search reports<input id="queue-search" type="search" placeholder="Reference, district or responder"></label><label>Status<select id="queue-status"><option value="ACTIVE">Unresolved</option><option value="UNASSIGNED">Unassigned</option><option value="OVERDUE">Overdue</option><option value="RESOLVED">Resolved</option><option value="ARCHIVED">Archived</option><option value="ALL">All reports</option></select></label><label>Priority<select id="queue-priority"><option value="ALL">All priorities</option><option>CRITICAL</option><option>HIGH</option><option>MEDIUM</option><option>LOW</option></select></label><label>Assigned responder<select id="queue-assignee"><option value="ALL">All responders</option></select></label></div><div class="table-wrap"><table><thead><tr><th><input id="queue-select-all" type="checkbox" aria-label="Select displayed reports"></th><th>Report</th><th>Priority / status</th><th>Assigned to</th><th>Deadline</th><th>Control</th></tr></thead><tbody id="queue-rows"></tbody></table></div><p id="queue-empty" class="empty" hidden>No reports match the selected view.</p><div class="board-meta"><span id="queue-shown"></span><div class="actions"><button id="queue-prev" class="quiet">Previous</button><span id="queue-page">Page 1</span><button id="queue-next" class="quiet">Next</button></div></div><div class="bulk-bar"><strong id="bulk-count">0 selected</strong><select id="bulk-operation" aria-label="Bulk operation"><option value="assign">Assign responder</option><option value="status">Change status</option><option value="severity">Change priority</option><option value="archive">Archive resolved reports</option><option value="restore">Restore archived reports</option></select><select id="bulk-value" aria-label="Bulk action value"></select><button id="bulk-apply" class="primary" disabled>Apply to selected</button></div></section>
+<section class="panel"><div class="panel-heading"><div><span class="eyebrow">ALLOCATION</span><h2>Responder workload</h2></div><span class="muted">Unresolved assignments</span></div><div id="workloads" class="workload-grid"></div></section>
+<section class="panel" id="admin-people"><div class="panel-heading"><div><span class="eyebrow">ACCESS CONTROL</span><h2>People and permissions <span id="member-count" class="count">0</span></h2></div><button id="create-user-toggle" class="primary">+ Create account</button></div><p class="muted">Suspending an account immediately ends its sessions. Protected accounts cannot be suspended or have their role changed here.</p><form id="create-user-form" hidden><div class="fields"><label>Username<input name="username" pattern="[A-Za-z0-9_-]{3,40}" minlength="3" maxlength="40" required autocomplete="off"></label><label>Initial password<input name="password" type="password" minlength="8" maxlength="72" required autocomplete="new-password"></label><label>Role<select name="role"><option value="user">Responder</option><option value="admin">Administrator</option></select></label></div><button class="primary">Create account</button><p class="footnote">Share the initial password securely. The account holder can change it after signing in.</p></form><label class="member-search">Search accounts<input id="member-search" type="search" placeholder="Username or role"></label><div class="table-wrap"><table class="member-table"><thead><tr><th>Account</th><th>Role</th><th>Access</th><th>Sessions</th><th>Last sign-in</th><th>Controls</th></tr></thead><tbody id="member-rows"></tbody></table></div></section>
+<section class="panel" id="admin-settings"><div class="panel-heading"><div><span class="eyebrow">POLICY</span><h2>Workspace settings</h2></div><span class="badge">TAKES EFFECT IMMEDIATELY</span></div><form id="policy-form"><div class="fields"><label>Public registration<select name="registrationOpen"><option value="true">Open - visitors can create accounts</option><option value="false">Closed - administrators create accounts</option></select></label><label>Gemini assistance<select name="aiEnabled"><option value="true">Enabled</option><option value="false">Disabled for the workspace</option></select></label><label>AI requests per hour<input name="aiHourlyLimit" type="number" min="1" max="1000" required></label></div><p id="ai-usage" class="muted"></p><div class="actions"><button class="primary">Save workspace settings</button><button id="policy-reload" class="quiet" type="button">Reload saved settings</button></div></form></section>
+<section class="panel" id="admin-broadcasts"><div class="panel-heading"><div><span class="eyebrow">COMMUNICATE</span><h2>Workspace broadcasts</h2></div><span class="badge">IN-APP DELIVERY</span></div><form id="broadcast-form"><div class="fields"><label>Audience<select id="broadcast-target" name="target"><option value="team">Entire workspace</option></select></label><label>Subject<input name="title" maxlength="150" required></label></div><label>Message<textarea name="body" maxlength="2000" rows="3" required></textarea></label><button class="primary">Publish notification</button></form><p class="footnote">Messages appear in the recipients' RescuePulse feed. No email or SMS is sent.</p></section>
+<section class="panel" id="admin-audit"><div class="panel-heading"><div><span class="eyebrow">ACCOUNTABILITY</span><h2>Audit trail</h2></div><button id="audit-export" class="quiet">Export audit CSV</button></div><label>Search activity<input id="audit-search" type="search" placeholder="Actor, action or report reference"></label><div class="table-wrap"><table><thead><tr><th>When</th><th>Actor</th><th>Action</th><th>Target / details</th></tr></thead><tbody id="audit-rows"></tbody></table></div><p id="audit-summary" class="muted"></p></section><footer>RescuePulse | Administration</footer></div></main></div>
+<dialog id="triage-dialog"><div class="dialog-heading"><div><span class="eyebrow" id="triage-reference"></span><h2 id="triage-title">Incident control</h2></div><button id="triage-close" class="quiet">Close</button></div><p id="triage-description"></p><p id="triage-meta" class="muted"></p><p id="triage-message" role="status" class="muted"></p><form id="triage-form"><div class="fields"><label>Assigned responder<select id="triage-assignee" name="assignee"></select></label><label>Priority<select name="severity"><option>LOW</option><option>MEDIUM</option><option>HIGH</option><option>CRITICAL</option></select></label><label>Status<select name="status"><option value="OPEN">Open</option><option value="ACK">Acknowledged</option><option value="RESOLVED">Resolved</option></select></label><label>Response deadline (local time)<input name="dueAt" type="datetime-local"></label></div><button class="primary">Save coordination changes</button></form><button id="triage-archive" class="quiet">Archive incident</button><section class="detail-section"><h3>Recent field updates</h3><div id="triage-notes"></div></section></dialog>
+</body></html>

@@ -1,215 +1,39 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI-EmergencyShield - Sign Up</title>
-
-    <!-- Tailwind CSS for rapid UI development -->
-    <script src="https://cdn.tailwindcss.com"></script>
-
-    <style>
-        /* Importing the 'Inter' font for consistency */
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&family=Roboto+Mono:wght@400&display=swap');
-
-        /* Base styles */
-        body {
-            font-family: 'Inter', sans-serif;
-            overflow-x: hidden;
-            background-color: #0a0a14;
-        }
-
-        /* Main container with background */
-        #main-container {
-            background-image: url('assets/images/homepage.jpeg');
-            background-size: cover;
-            background-position: center;
-        }
-
-        /* Glass panel effect */
-        .glass-panel {
-            background: rgba(20, 20, 30, 0.4);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        /* Panel glow effect */
-        .panel-glow {
-            box-shadow: 0 0 40px rgba(0, 255, 255, 0.1);
-        }
-
-        /* Button glow effect */
-        .glow-button {
-            box-shadow: 0 0 15px rgba(251, 146, 60, 0.5), 0 0 30px rgba(251, 146, 60, 0.3);
-            transition: all 0.3s ease-in-out;
-        }
-
-        .glow-button:hover {
-            transform: scale(1.05);
-            box-shadow: 0 0 25px rgba(251, 146, 60, 0.7), 0 0 45px rgba(251, 146, 60, 0.5);
-        }
-
-        /* Mobile-responsive adjustments */
-        @media (max-width: 768px) {
-            header {
-                padding: 1rem;
-            }
-
-            nav .flex {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-
-            nav .space-x-4 {
-                display: none;
-            }
-
-            main {
-                margin-top: 2rem;
-                padding: 0 1rem;
-            }
-
-            h1 {
-                font-size: 1.5rem; /* Reduced from 4xl/5xl */
-                line-height: 1.2;
-            }
-
-            p {
-                font-size: 0.875rem; /* Reduced from 1rem */
-                max-width: 90%;
-                line-height: 1.5;
-            }
-
-            #main-container .max-w-md {
-                max-width: 100%; /* Full width on mobile */
-            }
-
-            .glass-panel {
-                padding: 0.5rem; /* Reduced padding */
-                border-radius: 1rem;
-            }
-
-            .space-y-6 {
-                space-y-4; /* Reduced spacing between form fields */
-            }
-
-            label {
-                font-size: 0.75rem; /* Reduced label size */
-            }
-
-            input {
-                font-size: 0.875rem; /* Reduced input text size */
-                padding: 0.25rem; /* Reduced padding */
-                height: 2rem; /* Fixed height for compactness */
-            }
-
-            .glow-button {
-                padding: 0.5rem 1rem; /* Reduced padding */
-                font-size: 0.875rem; /* Reduced from 1rem */
-                width: 100%;
-                text-align: center;
-            }
-        }
-    </style>
-</head>
-<body class="bg-gray-900 text-white">
-
-<!-- Main container -->
-<div id="main-container" class="relative min-h-screen w-full flex flex-col items-center justify-center p-4">
-    <div class="absolute inset-0 bg-black/50 z-0"></div>
-
-    <!-- Header / Navigation Section -->
-    <header class="absolute top-0 left-0 right-0 z-20 p-4 md:p-6">
-        <nav class="container mx-auto flex justify-between items-center">
-            <!-- Logo (now clickable to index.html) -->
-            <a href="index.html" class="flex items-center space-x-2">
-                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 14v-1m-6.08-4.92l.707-.707m9.856 0l-.707-.707M4 12H3m18 0h-1m-5.92-6.08l-.707.707m0 9.856l.707.707"></path></svg>
-                <span class="text-2xl font-bold tracking-wider">RescuePulse</span>
-            </a>
-
-            <div class="hidden md:flex items-center space-x-4">
-                <a href="index.html" class="text-gray-300 hover:text-white transition-colors">Home</a>
-                <a href="sign-in.html" class="text-gray-300 hover:text-white transition-colors">Sign In</a>
-            </div>
-            <div class="md:hidden">
-                <button id="mobile-menu-button" class="text-white focus:outline-none" aria-label="Open menu">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
-                </button>
-            </div>
-        </nav>
-        <div id="mobile-menu" class="hidden md:hidden mt-4 bg-black/30 backdrop-blur-md rounded-lg">
-            <a href="index.html" class="block py-2 px-4 text-sm hover:bg-gray-700 rounded">Home</a>
-            <a href="sign-in.html" class="block py-2 px-4 text-sm hover:bg-gray-700 rounded">Sign In</a>
-        </div>
-    </header>
-
-    <!-- Main Content Area -->
-    <main class="relative z-10 flex flex-col items-center text-center mt-32 md:mt-16">
-        <h1 class="text-4xl md:text-5xl font-bold tracking-tight">Sign Up</h1>
-        <p class="mt-4 text-lg text-gray-300 max-w-xl">Join AI-EmergencyShield to contribute to disaster response in Sri Lanka.</p>
-
-        <!-- Sign-up Form -->
-        <div class="relative w-full max-w-md mt-10 glass-panel rounded-2xl p-6 panel-glow">
-            <form id="sign-up-form" class="space-y-6">
-                <div>
-                    <label for="username" class="block text-sm font-medium text-gray-300">Username</label>
-                    <input type="text" id="username" name="username" class="mt-1 w-full px-4 py-2 bg-transparent border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-orange-500" required>
-                </div>
-                <div>
-                    <label for="email" class="block text-sm font-medium text-gray-300">Email</label>
-                    <input type="email" id="email" name="email" class="mt-1 w-full px-4 py-2 bg-transparent border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-orange-500" required>
-                </div>
-                <div>
-                    <label for="password" class="block text-sm font-medium text-gray-300">Password</label>
-                    <input type="password" id="password" name="password" class="mt-1 w-full px-4 py-2 bg-transparent border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-orange-500" required>
-                </div>
-                <button type="submit" class="w-full px-4 py-2 bg-orange-500 text-white font-bold rounded-full glow-button">Sign Up</button>
-            </form>
-            <p class="mt-4 text-sm text-gray-400">Already have an account? <a href="sign-in.html" class="text-orange-400 hover:underline">Sign in</a></p>
-        </div>
-    </main>
-</div>
-
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const signUpForm = document.getElementById('sign-up-form');
-        if (signUpForm) {
-            signUpForm.addEventListener('submit', function(e) {
-                e.preventDefault();
-                const username = document.getElementById('username').value;
-                const email = document.getElementById('email').value;
-                const password = document.getElementById('password').value;
-                fetch('/auth/signup', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password })
-                })
-                .then(r => r.json())
-                .then(data => {
-                    if (data.status === 'ok') {
-                        alert('Sign-up successful! Redirecting to Sign In...');
-                        window.location.href = 'sign-in.html';
-                    } else {
-                        alert('Sign-up failed: ' + (data.message || 'unknown error'));
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('Sign-up failed: network error');
-                });
-            });
-        }
-
-        // Mobile menu toggle
-        const mobileMenuButton = document.getElementById('mobile-menu-button');
-        const mobileMenu = document.getElementById('mobile-menu');
-        if (mobileMenuButton && mobileMenu) {
-            mobileMenuButton.addEventListener('click', function() {
-                mobileMenu.classList.toggle('hidden');
-            });
-        }
-    });
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>RescuePulse | Create your account</title>
+<link rel="stylesheet" href="/dashboard.css">
+<script defer src="/auth.js">
 </script>
+</head>
+<body>
+<header>
+<a class="brand" href="/">✚ <span>RescuePulse<small>EARLY INSIGHT. FASTER RESPONSE.</small>
+</span>
+</a>
+<a href="/docs.html">Help center</a>
+</header>
+<main style="max-width:500px;padding-top:70px">
+<span class="eyebrow">RESPONSE CENTER / ACCESS</span>
+<h1>Create your account</h1>
+<p class="muted">Your workspace for coordinated disaster response.</p>
+<section class="panel" style="margin-top:28px">
+<form id="auth-form" data-action="signup">
+<label>Username<input name="username" autocomplete="username" pattern="[A-Za-z0-9_-]{3,40}" minlength="3" maxlength="40" required placeholder="Your username">
+</label>
+<label>Password<input name="password" type="password" autocomplete="new-password" minlength="8" maxlength="72" required placeholder="At least 8 characters">
+</label>
+<button class="primary" style="width:100%" type="submit">Create account</button>
+<p id="auth-message" role="status" aria-live="polite" class="muted">
+</p>
+</form>
+<p class="muted">
+<a href="/sign-in.html">Already registered? Sign in →</a>
+</p>
+</section>
+<p class="footnote">Keep your account details private. Contact your coordinator if you need different workspace permissions.</p>
+</main>
 </body>
 </html>

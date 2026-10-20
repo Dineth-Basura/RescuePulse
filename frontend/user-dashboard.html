@@ -1,103 +1,224 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>RescuePulse - Disaster Response Dashboard</title>
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🚨</text></svg>">
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet" />
-  <style>
-    body { font-family: 'Inter', sans-serif; background: radial-gradient(circle at top right, #0a0a14 0%, #000 70%); color: #f0f0f5; overflow: hidden; }
-    .glass { background: rgba(20,20,30,0.7); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,.3); }
-    .legend { padding: 10px 12px; font: 12px/1.5 'Inter', sans-serif; background: rgba(20,20,30,.8); border-radius: 10px; color:#a0a0b0; border: 1px solid rgba(255,255,255,.1) }
-    .legend i { width:18px; height:18px; float:left; margin-right:8px; border-radius:50%; opacity:.9 }
-    ::-webkit-scrollbar { width: 8px } ::-webkit-scrollbar-thumb { background:#2d3748; border-radius:4px }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>RescuePulse | Response center</title>
+<link rel="icon" href="/assets/favicon.ico">
+<link rel="stylesheet" href="/dashboard.css">
+<script defer src="/dashboard.js">
+</script>
 </head>
 <body>
-  <div class="flex h-screen">
-    <aside id="sidebar" class="w-64 bg-[#14141e] p-6 flex flex-col fixed md:relative h-full z-30 -translate-x-full md:translate-x-0 border-r border-white/10">
-      <div class="flex items-center gap-3 mb-10">
-        <div class="bg-rose-500/20 p-3 rounded-xl">🚨</div>
-        <div><h1 class="text-2xl font-bold">RescuePulse</h1><p class="text-xs text-white/60">Disaster Response Dashboard</p></div>
-      </div>
-      <div class="mb-8 p-4 glass"><p class="text-xs text-white/60">Logged in as</p><p id="loggedUser" class="font-medium">User</p></div>
-      <nav class="flex-grow">
-        <a class="block p-3 rounded-xl bg-sky-400/10 text-sky-400 font-semibold" href="#">Dashboard</a>
-      </nav>
-      <a id="logout" href="#" class="mt-auto block p-3 rounded-xl text-rose-400 hover:bg-rose-400/10">Logout</a>
-    </aside>
-    <div class="flex-1 flex flex-col h-screen overflow-y-auto">
-      <header class="px-4 py-3 flex justify-between items-center border-b border-white/10 bg-black/30">
-        <button id="burger" class="md:hidden">☰</button>
-        <h2 class="text-lg font-bold hidden md:block">Disaster Response Dashboard</h2>
-        <span id="clock" class="font-mono text-sm text-white/70"></span>
-      </header>
-      <main class="grid grid-cols-1 lg:grid-cols-3 gap-6 p-4">
-        <section class="lg:col-span-2 flex flex-col gap-6">
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
-            <div class="glass p-5"><p class="text-white/60 text-sm">Active Alerts</p><p id="kpi-active" class="text-3xl font-bold text-rose-400 mt-2">0</p></div>
-            <div class="glass p-5"><p class="text-white/60 text-sm">Highest Risk</p><p id="kpi-high" class="text-2xl font-bold mt-2">-</p></div>
-            <div class="glass p-5"><p class="text-white/60 text-sm">Response Teams</p><p class="text-3xl font-bold mt-2">12</p></div>
-          </div>
-          <div class="relative glass h-96 rounded-2xl overflow-hidden"><div id="map" class="h-full w-full"></div></div>
-        </section>
-        <section class="glass p-6">
-          <h3 class="text-lg font-bold mb-4">Risk Prediction</h3>
-          <form id="form" class="space-y-4">
-            <div><label class="text-sm text-white/70">Location</label><input id="loc" class="w-full p-3 rounded bg-[#14141e] border border-white/10" placeholder="Ampara" required></div>
-            <div class="grid grid-cols-2 gap-4">
-              <div><label class="text-sm text-white/70">Temperature (°C)</label><input id="t" type="number" step="0.1" class="w-full p-3 rounded bg-[#14141e] border border-white/10" placeholder="30.5" required></div>
-              <div><label class="text-sm text-white/70">Humidity (%)</label><input id="h" type="number" step="0.1" class="w-full p-3 rounded bg-[#14141e] border border-white/10" placeholder="85.2" required></div>
-            </div>
-            <div><label class="text-sm text-white/70">Wind Speed (m/s)</label><input id="w" type="number" step="0.1" class="w-full p-3 rounded bg-[#14141e] border border-white/10" placeholder="12.3" required></div>
-            <button class="w-full py-3 rounded-xl text-white bg-gradient-to-r from-orange-400 to-rose-500">Run Prediction</button>
-            <div class="text-sm text-white/70">Risk score: <span id="score">n/a</span> • Level: <span id="level">-</span></div>
-          </form>
-          <div class="mt-6"><h4 class="font-semibold mb-2">Recent Alerts</h4><table class="w-full text-sm"><thead><tr class="text-white/60 border-b border-white/10"><th class="py-2 text-left">Location</th><th class="py-2 text-left">Risk</th><th class="py-2 text-left">Score</th></tr></thead><tbody id="alerts"></tbody></table></div>
+<aside class="sidebar">
+<a class="brand" href="/">✚ <span>RescuePulse<small>EARLY INSIGHT. FASTER RESPONSE.</small>
+</span>
+</a>
+<div class="workspace">SRI LANKA / RESPONSE CENTER</div>
+<nav>
+<a class="selected" href="#overview">◉ &nbsp; Overview</a>
+<a href="#assessment">↗ &nbsp; Risk assessment</a>
+<a href="#incidents">☷ &nbsp; Incident board</a>
+<a href="/docs.html"> Help center</a>
+<a id="admin-link" href="/admin-dashboard.html" hidden>⚙ &nbsp; Administration</a>
+</nav>
+<div class="sidebar-bottom">
+<span class="status-dot">
+</span> Operations workspace<br>
+<small id="identity">Checking session…</small>
+<button id="logout" class="quiet">Sign out</button>
+</div>
+</aside>
+<div class="shell">
+<header>
+<div>
+<span class="eyebrow">OPERATIONS / OVERVIEW</span>
+<h1>Response center<span class="badge">WORKSPACE</span>
+</h1>
+</div>
+<div class="header-right">
+<span id="connection">Connecting…</span>
+<time id="clock">
+</time>
+<button id="account-open" class="quiet">Account</button>
+<button id="mobile-logout" class="quiet mobile-logout">Sign out</button>
+</div>
+</header>
+<main id="overview">
+<div class="notice">
+<span>ⓘ</span>
+<p>
+<strong>Response workspace.</strong> Track reports, assign responders and keep response updates together.</p>
+</div>
+<div id="message" role="status" aria-live="polite" hidden>
+</div>
+<section class="metrics">
+<article>
+<span>Open incidents</span>
+<strong id="open-count">—</strong>
+<small>Awaiting response</small>
+</article>
+<article>
+<span>Highest assessed risk</span>
+<strong id="highest">—</strong>
+<small id="highest-location">No assessment recorded</small>
+</article>
+<article>
+<span>Weather observations</span>
+<strong id="observations">—</strong>
+<small>Saved observations</small>
+</article>
+<article>
+<span>Resolved incidents</span>
+<strong id="resolved-count">—</strong>
+<small>Response progress</small>
+</article>
+</section>
+<div class="primary-grid">
+<section class="panel" id="assessment">
+<div class="panel-heading">
+<div>
+<span class="eyebrow">01 / ASSESS</span>
+<h2>Weather risk assessment</h2>
+</div>
+<span class="badge">MANUAL INPUT</span>
+</div>
+<p class="muted">Enter observed conditions and save an assessment for the district.</p>
+<form id="risk-form">
+<label>District<select name="location">
+<option>Colombo</option>
+<option>Ratnapura</option>
+<option>Kandy</option>
+<option>Galle</option>
+<option>Ampara</option>
+<option>Jaffna</option>
+<option>Badulla</option>
+<option>Matara</option>
+<option>Trincomalee</option>
+</select>
+</label>
+<div class="fields">
+<label>Rainfall (mm)<input name="rainMm" type="number" min="0" max="1000" step="0.1" required>
+</label>
+<label>Wind (km/h)<input name="windKph" type="number" min="0" max="400" step="0.1" required>
+</label>
+<label>Temperature (&deg;C)<input name="tempC" type="number" min="-50" max="60" step="0.1" required>
+</label>
+<label>Humidity (%)<input name="humidityPct" type="number" min="0" max="100" step="0.1" required>
+</label>
+<label>Soil saturation (%)<input name="soilSatPct" type="number" min="0" max="100" step="0.1" required>
+</label>
+</div>
+<button class="primary" type="submit">Assess risk <span>→</span>
+</button>
+</form>
+</section>
+<section class="panel result-panel">
+<div class="panel-heading">
+<div>
+<span class="eyebrow">02 / UNDERSTAND</span>
+<h2>Risk outlook</h2>
+</div>
+<span id="risk-badge" class="badge">NO ASSESSMENT</span>
+</div>
+<div class="gauge" id="gauge">
+<div>
+<strong id="risk-score">—</strong>
+<span>RISK INDEX / 100</span>
+</div>
+</div>
+<h3 id="risk-title">Ready when you are</h3>
+<p id="risk-detail" class="muted">Enter weather readings to calculate a decision-support risk index.</p>
+<div class="thresholds">
+<span>Low &lt;40</span>
+<span>Moderate 40–64</span>
+<span>High &ge;65</span>
+</div>
+<button id="create-from-risk" class="primary" disabled>Create incident from assessment</button>
+<div class="ai-section"><div class="notification-heading"><h3>AI assessment explanation</h3><span class="badge">GEMINI</span></div><p class="muted">Explain saved observations and identify what needs checking. These readings are sent to Gemini when you select Explain assessment.</p><button id="ai-weather" class="quiet" type="button" disabled>Explain assessment</button><p id="ai-weather-status" class="muted" role="status">Run an assessment first.</p><div id="ai-weather-output" class="ai-output" hidden></div></div>
 
-          <div class="mt-6">
-            <h4 class="font-semibold mb-2">Actions</h4>
-            <div id="control-panel" class="grid grid-cols-2 gap-2">
-              <button id="btn-data-stats" class="px-3 py-2 rounded bg-cyan-600/70 hover:bg-cyan-500">Data Stats</button>
-              <button id="btn-data-ingest" class="px-3 py-2 rounded bg-cyan-600/70 hover:bg-cyan-500">Ingest Sample</button>
-              <button id="btn-ai-predict" class="px-3 py-2 rounded bg-emerald-600/70 hover:bg-emerald-500">AI Predict</button>
-              <button id="btn-analytics-sum" class="px-3 py-2 rounded bg-emerald-600/70 hover:bg-emerald-500">Analytics Summarize</button>
-              <button id="btn-incident-create" class="px-3 py-2 rounded bg-orange-600/70 hover:bg-orange-500">Incident Create</button>
-              <button id="btn-incident-list" class="px-3 py-2 rounded bg-orange-600/70 hover:bg-orange-500">Incident List</button>
-              <button id="btn-notify-publish" class="px-3 py-2 rounded bg-fuchsia-600/70 hover:bg-fuchsia-500">Notify Publish</button>
-              <button id="btn-notify-list" class="px-3 py-2 rounded bg-fuchsia-600/70 hover:bg-fuchsia-500">Notify List</button>
-            </div>
-            <div id="control-output" class="mt-3 bg-black/40 text-xs p-2 rounded max-h-64 overflow-auto"></div>
-          </div>
-        </section>
-      </main>
-    </div>
-  </div>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
-  <script>
-    const cities = { Ampara:[7.3000,81.6660], Colombo:[6.9271,79.8612], Kandy:[7.2906,80.6337], Galle:[6.0535,80.2210], Jaffna:[9.6615,80.0255], Anuradhapura:[8.3114,80.4037], Trincomalee:[8.5922,81.2350], Matara:[5.9483,80.5353], Ratnapura:[6.6806,80.3997], Batticaloa:[7.7170,81.7000], Kurunegala:[7.4863,80.3647], Badulla:[6.9895,81.0550] };
-    const riskInfo = s => { const v=Number(s||0); return v>=0.7?{l:'High',c:'#f43f5e'}:v>=0.4?{l:'Medium',c:'#fb923c'}:{l:'Low',c:'#38bdf8'} };
-    const icon = c => L.divIcon({ html:`<div class='w-4 h-4 rounded-full' style='background:${c};box-shadow:0 0 12px ${c}'></div>`, className:'', iconSize:[16,16], iconAnchor:[8,8] });
-    function tick(){ document.getElementById('clock').textContent = new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}) }
-    setInterval(tick,1000); tick();
-    const tok = localStorage.getItem('rp_token'); if (tok) { const u=(localStorage.getItem('rp_user')||tok.replace('demo-token-','')); document.getElementById('loggedUser').textContent = u; }
-    document.getElementById('burger').onclick = () => document.getElementById('sidebar').classList.toggle('-translate-x-full');
-    document.getElementById('logout').onclick = (e)=>{ e.preventDefault(); localStorage.removeItem('rp_token'); location.href='sign-in.html'; };
-
-    const map = L.map('map',{zoomControl:false}).setView([7.8731,80.7718],7);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:20}).addTo(map);
-    L.control.zoom({position:'bottomright'}).addTo(map);
-    const legend = L.control({position:'bottomleft'}); legend.onAdd = () => { const d = L.DomUtil.create('div','legend'); d.innerHTML = '<h4 class="text-xs font-bold mb-2 text-white">RISK LEVEL</h4><div class="flex items-center mb-1"><i style="background:#f43f5e"></i><span class="text-xs">High</span></div><div class="flex items-center mb-1"><i style="background:#fb923c"></i><span class="text-xs">Medium</span></div><div class="flex items-center"><i style="background:#38bdf8"></i><span class="text-xs">Low</span></div>'; return d; }; legend.addTo(map);
-    const dyn = {};
-    const alertsT = document.getElementById('alerts');
-    function pushAlert(loc,score){ const {l,c}=riskInfo(score); const tr=document.createElement('tr'); tr.innerHTML = `<td class='py-2'>${loc}</td><td class='py-2' style='color:${c}'>${l}</td><td class='py-2 text-white/70'>${Number(score).toFixed(2)}</td>`; alertsT.prepend(tr); const k=document.getElementById('kpi-active'); k.textContent = String(Number(k.textContent||'0')+1); document.getElementById('kpi-high').textContent = loc; }
-    async function predict(loc,temp,hum,windMs){ const payload={ rainMm: Math.max(0,(hum/100)*15), windKph: windMs*3.6, tempC: temp, humidityPct: hum, soilSatPct: 50 }; const r=await fetch('/ai/predict',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}); return await r.json(); }
-    document.getElementById('form').addEventListener('submit', async (e)=>{ e.preventDefault(); const loc=document.getElementById('loc').value.trim(); const t=parseFloat(document.getElementById('t').value); const h=parseFloat(document.getElementById('h').value); const w=parseFloat(document.getElementById('w').value); try{ const data=await predict(loc,t,h,w); const s=Number(data.riskScore||0); const {l,c}=riskInfo(s); document.getElementById('score').textContent=s.toFixed(2); document.getElementById('level').textContent=l; const coords=cities[loc]; if(coords){ if(dyn[loc]) dyn[loc].setIcon(icon(c)).bindPopup(`${loc}<br/>Risk: <b style='color:${c}'>${l}</b> (${s.toFixed(2)})`).openPopup(); else dyn[loc]=L.marker(coords,{icon:icon(c)}).addTo(map).bindPopup(`${loc}<br/>Risk: <b style='color:${c}'>${l}</b> (${s.toFixed(2)})`).openPopup(); map.flyTo(coords,10); } pushAlert(loc,s); }catch(err){ console.error(err); } });
-  </script>
-  <script src="script.js"></script>
+<p class="footnote">Decision support from manually entered readings; verify conditions before acting. No external dispatch is sent.<br>Rainfall 35% · Wind 25% · Temperature 15%<br>Humidity 10% · Soil saturation 15%</p>
+</section>
+</div>
+<section class="panel" id="incidents">
+<div class="panel-heading">
+<div>
+<span class="eyebrow">03 / RESPOND</span>
+<h2>Incident board <span id="incident-total" class="count">0</span>
+</h2>
+</div>
+<div class="actions">
+<select id="status-filter" aria-label="Filter incidents">
+<option value="ALL">All statuses</option>
+<option>OPEN</option>
+<option>ACK</option>
+<option>RESOLVED</option>
+</select>
+<button id="export-csv" class="quiet">Export CSV</button>
+<button id="refresh" class="quiet">Refresh</button>
+<button id="report-toggle" class="primary">+ Report incident</button>
+</div>
+</div>
+<div class="filter-bar">
+<label>Search<input id="incident-search" type="search" placeholder="Location, description, responder or ID"></label>
+<label>Priority<select id="severity-filter"><option value="ALL">All priorities</option><option>LOW</option><option>MEDIUM</option><option>HIGH</option><option>CRITICAL</option></select></label>
+<label>Ownership<select id="owner-filter"><option value="ALL">All visible</option><option value="MINE">Assigned to me</option><option value="REPORTED">Reported by me</option><option value="UNASSIGNED">Unassigned</option></select></label>
+<label>View<select id="archive-filter"><option value="ACTIVE">Active records</option><option value="ARCHIVED">Archived records</option><option value="ALL">All records</option></select></label>
+</div><div class="board-meta"><span id="board-summary"></span><span><span id="overdue-count">0</span> overdue &middot; <button id="auto-refresh" class="text-button" aria-pressed="true">Auto-refresh on</button></span></div>
+<form id="incident-form" hidden>
+<div class="fields">
+<label>Location<input name="location" maxlength="100" required>
+</label>
+<label>Severity<select name="severity">
+<option>LOW</option>
+<option>MEDIUM</option>
+<option>HIGH</option>
+<option>CRITICAL</option>
+</select>
+</label>
+</div>
+<label>Incident type<select name="category"><option value="OTHER">Other</option><option value="FLOOD">Flood</option><option value="LANDSLIDE">Landslide</option><option value="STORM">Storm</option><option value="FIRE">Fire</option><option value="MEDICAL">Medical</option></select></label>
+<label>Description<input name="description" maxlength="2000" required placeholder="Describe what was observed and where">
+</label>
+<button class="primary" type="submit">Save incident</button>
+</form>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Location / incident</th>
+<th>Severity</th>
+<th>Status</th>
+<th>Responder / deadline</th>
+<th>Details</th>
+</tr>
+</thead>
+<tbody id="incident-rows">
+</tbody>
+</table>
+</div><div class="pagination"><button id="page-prev" class="quiet">Previous</button><span id="page-label">Page 1</span><button id="page-next" class="quiet">Next</button></div>
+<p id="empty" class="empty">No incidents yet. Report an observation to begin.</p>
+</section>
+<section class="panel activity">
+<div class="panel-heading">
+<div>
+<span class="eyebrow">IN-APP ONLY</span>
+<h2>Notification feed <span id="unread-count" class="count">0</span></h2>
+</div>
+<span class="badge">WORKSPACE UPDATES</span>
+</div>
+<form id="notification-form" hidden><div class="fields"><label>Recipient<select name="target" id="notification-target"><option value="team">Entire workspace</option></select></label><label>Title<input name="title" maxlength="150" required></label></div><label>Message<textarea name="body" maxlength="2000" rows="3" required></textarea></label><button class="primary">Send notification</button></form>
+<div id="notifications">
+<p class="muted">You are all caught up.</p>
+</div>
+</section>
+<footer>RescuePulse · Response operations</footer>
+</main>
+<dialog id="incident-dialog"><div class="dialog-heading"><div><span class="eyebrow" id="detail-id"></span><h2 id="detail-title">Incident details</h2></div><button id="detail-close" class="quiet" aria-label="Close incident details">Close</button></div><p id="detail-meta" class="muted"></p><p id="detail-description"></p><div id="detail-message" role="status"></div>
+<form id="detail-form"><div class="fields"><label>Location<input name="location" maxlength="100" required></label><label>Type<select name="category"><option>OTHER</option><option>FLOOD</option><option>LANDSLIDE</option><option>STORM</option><option>FIRE</option><option>MEDICAL</option></select></label><label>Priority<select name="severity"><option>LOW</option><option>MEDIUM</option><option>HIGH</option><option>CRITICAL</option></select></label><label>Status<select name="status"><option value="OPEN">Open</option><option value="ACK">Acknowledged</option><option value="RESOLVED">Resolved</option></select></label><label id="assignment-field">Assigned responder<select name="assignee" id="detail-assignee"><option value="">Unassigned</option></select></label><label id="deadline-field">Response deadline (local time)<input name="dueAt" type="datetime-local"></label></div><label>Description<textarea name="description" rows="3" maxlength="2000" required></textarea></label><div class="actions"><button class="primary" type="submit">Save changes</button><button id="archive-incident" class="quiet" type="button">Archive incident</button></div></form>
+<section class="detail-section ai-section"><div class="notification-heading"><h3>AI response brief</h3><span class="badge">GEMINI</span></div><p class="muted">Sends this report and up to five recent notes to Gemini. Avoid including sensitive personal details.</p><button id="ai-incident" class="quiet" type="button" disabled>Generate briefing</button><p id="ai-incident-status" role="status" class="muted">Checking AI availability...</p><div id="ai-incident-output" class="ai-output" hidden></div><button id="ai-handover-draft" type="button" class="quiet" hidden>Use handover as note draft</button><p class="footnote">Review AI suggestions against current conditions. They do not change assignments, priorities or dispatch anyone.</p></section>
+<section class="detail-section"><h3>Response notes</h3><div id="detail-notes"></div><form id="note-form"><label>Add a response update<textarea name="text" rows="3" maxlength="2000" required placeholder="Progress, observations or handover details"></textarea></label><button class="primary">Add note</button></form></section><section class="detail-section"><h3>Activity history</h3><div id="detail-history"></div></section></dialog>
+<dialog id="account-dialog"><div class="dialog-heading"><h2>Account settings</h2><button id="account-close" class="quiet">Close</button></div><p id="account-identity" class="muted"></p><h3>Change password</h3><form id="password-form"><label>Current password<input type="password" name="currentPassword" autocomplete="current-password" required></label><label>New password<input type="password" name="newPassword" autocomplete="new-password" minlength="8" maxlength="72" required></label><label>Confirm new password<input type="password" name="confirmPassword" autocomplete="new-password" minlength="8" maxlength="72" required></label><p id="password-message" role="status" class="muted"></p><button class="primary">Update password</button></form></dialog>
+</div>
 </body>
 </html>
-

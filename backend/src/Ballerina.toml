@@ -1,10 +1,8 @@
-@@
 [package]
 org = "rescuepulse"
 name = "backend"
 version = "0.1.0"
-distribution = "2201.10.7"
+distribution = "2201.13.6"
 
 [build-options]
 observabilityIncluded = true
-

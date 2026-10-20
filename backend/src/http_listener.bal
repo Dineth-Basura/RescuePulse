@@ -1,4 +1,4 @@
 import ballerina/http;
 
-public listener http:Listener httpListener = new (8080);
-
+configurable int port = 8080;
+public listener http:Listener httpListener = new (port);

@@ -1,0 +1,5 @@
+dataDir = "../../.runtime/test-data"
+adminPassword = "Test-only-password-2026"
+
+# Provider calls are disabled during tests.
+geminiApiKey = ""

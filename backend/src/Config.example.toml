@@ -1,0 +1,9 @@
+# Copy to Config.toml for a coordinator account. Use a password of at least 8 characters.
+port = 8080
+dataDir = "runtime-data"
+adminPassword = ""
+
+# Server-side Gemini configuration. Never put the key in frontend code.
+geminiApiKey = ""
+geminiModel = "gemini-3.8-flash"
+geminiMaxRequestsPerHour = 60
