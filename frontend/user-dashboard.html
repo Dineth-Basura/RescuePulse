@@ -150,6 +150,7 @@
 <div class="actions">
 <select id="status-filter" aria-label="Filter incidents">
 <option value="ALL">All statuses</option>
+<option value="OVERDUE">Overdue</option>
 <option>OPEN</option>
 <option>ACK</option>
 <option>RESOLVED</option>
@@ -164,7 +165,7 @@
 <label>Priority<select id="severity-filter"><option value="ALL">All priorities</option><option>LOW</option><option>MEDIUM</option><option>HIGH</option><option>CRITICAL</option></select></label>
 <label>Ownership<select id="owner-filter"><option value="ALL">All visible</option><option value="MINE">Assigned to me</option><option value="REPORTED">Reported by me</option><option value="UNASSIGNED">Unassigned</option></select></label>
 <label>View<select id="archive-filter"><option value="ACTIVE">Active records</option><option value="ARCHIVED">Archived records</option><option value="ALL">All records</option></select></label>
-</div><div class="board-meta"><span id="board-summary"></span><span><span id="overdue-count">0</span> overdue &middot; <button id="auto-refresh" class="text-button" aria-pressed="true">Auto-refresh on</button></span></div>
+</div><div class="board-meta"><span id="board-summary" role="status">Loading incidents…</span><span><span id="overdue-count">0</span> overdue &middot; <button id="auto-refresh" class="text-button" aria-pressed="true">Auto-refresh on</button></span></div>
 <form id="incident-form" hidden>
 <div class="fields">
 <label>Location<input name="location" maxlength="100" required>

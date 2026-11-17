@@ -3,3 +3,6 @@ backend/src/target/
 backend/src/runtime-data/
 backend/src/Config.toml
 *.log
+.env
+.env.*
+!.env.example

@@ -10,7 +10,7 @@ async function api(path, method = 'GET', body, timeout = 12000) {
   const response = await fetch(path, {method, headers: {'Content-Type': 'application/json', Authorization: `Bearer ${token || ''}`}, body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(timeout)});
   const data = await response.json();
   if (response.status === 401) { localStorage.removeItem('rp_token'); location.replace('/sign-in.html'); throw new Error('Session expired. Please sign in.'); }
-  if (!response.ok) throw new Error(data.message || `Request failed (${response.status})`);
+  if (!response.ok) throw Object.assign(new Error(data.message || `Request failed (${response.status})`), {status: response.status});
   return data;
 }
 function level(score) { return score >= .65 ? 'HIGH' : score >= .4 ? 'MEDIUM' : 'LOW'; }
@@ -22,7 +22,7 @@ function filteredIncidents() {
  const query = $('incident-search').value.trim().toLowerCase();
  return incidents.filter(item => {
   const status = $('status-filter').value, severity = $('severity-filter').value, owner = $('owner-filter').value, archive = $('archive-filter').value;
-  return (status === 'ALL' || item.status === status) && (severity === 'ALL' || item.severity === severity) &&
+  return (status === 'ALL' || (status === 'OVERDUE' ? overdue(item) : item.status === status)) && (severity === 'ALL' || item.severity === severity) &&
    (archive === 'ALL' || Boolean(item.archived) === (archive === 'ARCHIVED')) &&
    (owner === 'ALL' || (owner === 'MINE' && item.assignee === account?.username) || (owner === 'REPORTED' && item.reportedBy === account?.username) || (owner === 'UNASSIGNED' && !item.assignee)) &&
    (!query || [item.id,item.location,item.description,item.assignee,item.category].join(' ').toLowerCase().includes(query));
@@ -74,6 +74,16 @@ function fillMemberSelect(select, allowTeam = false) {
  for (const member of members) select.append(new Option(member.username,member.username));
 }
 function toLocalInput(iso) { if (!iso) return ''; const d = new Date(iso); if(Number.isNaN(d.getTime()))return ''; return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16); }
+async function updateIncident(incident, changes) {
+ try {
+  return await api(`/incident/${encodeURIComponent(incident.id)}`, 'PATCH', {...changes, revision: incident.revision});
+ } catch (error) {
+  if (error.status !== 409) throw error;
+  await openIncident(incident.id);
+  $('detail-message').textContent = 'Someone updated this incident. Review the latest details before saving again.';
+  return null;
+ }
+}
 async function openIncident(id) {
  const inc = await api(`/incident/${encodeURIComponent(id)}`); selectedIncident = inc;
  aiHandover = null;
@@ -91,11 +101,12 @@ async function openIncident(id) {
  $('archive-incident').hidden = account.role !== 'admin' || inc.status !== 'RESOLVED';
  // Archived records still expose a separate restore action.
  $('restore-incident')?.remove();
- if (inc.archived && account.role === 'admin') { const restore = node('button','Restore incident','primary');restore.id = 'restore-incident';restore.onclick = () => busy(restore,async () => {await api(`/incident/${encodeURIComponent(inc.id)}`,'PATCH',{revision:inc.revision,archived:false});await openIncident(inc.id);await refresh();},$('detail-message'));$('detail-description').after(restore); }
+ if (inc.archived && account.role === 'admin') { const restore = node('button','Restore incident','primary');restore.id = 'restore-incident';restore.onclick = () => busy(restore,async () => {if(!await updateIncident(inc,{archived:false}))return;await openIncident(inc.id);await refresh();},$('detail-message'));$('detail-description').after(restore); }
  const notes = $('detail-notes');notes.replaceChildren();
  if (!inc.notes?.length) notes.append(node('p','No response notes yet.','muted'));
  for(const note of (inc.notes || []).slice().reverse()) {const entry = node('div','','activity-item');entry.append(node('strong',note.author),node('p',note.text),node('small',date(note.createdAt)));notes.append(entry);}
  const history = $('detail-history');history.replaceChildren();
+ if (!inc.history?.length) history.append(node('p','No incident history yet.','muted'));
  for(const event of (inc.history || []).slice(-30).reverse()) {const entry = node('div','','activity-item');entry.append(node('p',event.action),node('small',`${event.actor} | ${date(event.createdAt)}`));history.append(entry);}
  $('note-form').hidden = inc.archived;$('note-form').reset();
  if (!$('incident-dialog').open) $('incident-dialog').showModal();
@@ -103,10 +114,11 @@ async function openIncident(id) {
 $('detail-form').onsubmit = event => {event.preventDefault();busy(event.submitter,async () => {
  const values = Object.fromEntries(new FormData(event.target));
  if(account.role !== 'admin') {delete values.assignee;delete values.dueAt;} else {values.dueAt = values.dueAt ? new Date(values.dueAt).toISOString() : '';}
- const updated = await api(`/incident/${encodeURIComponent(selectedIncident.id)}`,'PATCH',{...values,revision:selectedIncident.revision});
+ const updated = await updateIncident(selectedIncident, values);
+ if (!updated) return;
  await openIncident(updated.id);await refresh();$('detail-message').textContent = 'Changes saved.';
 },$('detail-message'));};
-$('archive-incident').onclick = () => busy($('archive-incident'),async () => {const inc=selectedIncident;await api(`/incident/${encodeURIComponent(inc.id)}`,'PATCH',{revision:inc.revision,archived:true});$('incident-dialog').close();await refresh();message('Incident archived. Find it under Archived records.');},$('detail-message'));
+$('archive-incident').onclick = () => busy($('archive-incident'),async () => {const inc=selectedIncident;if(!await updateIncident(inc,{archived:true}))return;$('incident-dialog').close();await refresh();message('Incident archived. Find it under Archived records.');},$('detail-message'));
 $('note-form').onsubmit = event => {event.preventDefault();busy(event.submitter,async () => {const updated = await api(`/incident/${encodeURIComponent(selectedIncident.id)}/notes`,'POST',Object.fromEntries(new FormData(event.target)));await openIncident(updated.id);await refresh();},$('detail-message'));};
 function renderAiBrief(target, result) {
  target.replaceChildren();

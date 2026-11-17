@@ -200,7 +200,7 @@ service /auth on httpListener {
         }
     }
 
-    resource function post logout(http:Request req) returns json {
+    resource function post logout(http:Request req) returns http:Ok {
         lock {
             var header = req.getHeader("authorization");
             if header is string && header.startsWith("Bearer ") {
@@ -209,7 +209,7 @@ service /auth on httpListener {
                     _ = sessions.remove(token);
                 }
             }
-            return {status: "ok"};
+            return {body: {status: "ok"}};
 
         }
     }

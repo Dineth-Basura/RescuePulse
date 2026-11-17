@@ -11,7 +11,7 @@ async function request(path,method='GET',body) {
  const response=await fetch(path,{method,headers:{'Content-Type':'application/json',Authorization:`Bearer ${token||''}`},body:body===undefined?undefined:JSON.stringify(body),signal:AbortSignal.timeout(15000)});
  const data=await response.json();
  if(response.status===401){clearSession();location.replace('/sign-in.html');throw new Error('Please sign in again.');}
- if(!response.ok)throw new Error(data.message||`Request failed (${response.status})`);
+ if(!response.ok)throw Object.assign(new Error(data.message||`Request failed (${response.status})`), {status: response.status});
  if(data.auditRecorded===false)notify('The change was applied, but its audit record could not be saved. Refresh before retrying.',true);
  return data;
 }
@@ -66,9 +66,29 @@ async function loadAll(){if(loading)return;loading=true;try{
  const [summary,accounts,incidents,audit,policy]=await Promise.all([request('/admin/overview'),request('/admin/users'),request('/incident/list'),request('/admin/audit'),request('/admin/settings')]);overview=summary;people=accounts.users.sort((a,b)=>a.username.localeCompare(b.username));reports=incidents.sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt));events=audit.events.sort((a,b)=>b.createdAt.localeCompare(a.createdAt));settings=policy;
  selected=new Set([...selected].filter(id=>reports.some(report=>report.id===id)));fillPeople($('queue-assignee'),'All responders','ALL');fillPeople($('broadcast-target'),'Entire workspace','team');renderOverview();renderQueue();renderMembers();renderPolicy();renderAudit();renderBulkOptions();$('admin-identity').textContent=actor.username;$('admin-updated').textContent='Updated '+date(new Date().toISOString());$('admin-content').hidden=false;
  }finally{loading=false;}}
-async function openTriage(id){triage=await request(`/incident/${encodeURIComponent(id)}`);$('triage-reference').textContent=triage.id;$('triage-title').textContent=triage.location;$('triage-description').textContent=triage.description;$('triage-meta').textContent=`${triage.category} | Reported by ${triage.reportedBy||'Unknown'} | ${date(triage.createdAt)}`;$('triage-message').textContent='';fillPeople($('triage-assignee'),'Unassigned','',true);if(triage.assignee&&![...$('triage-assignee').options].some(option=>option.value===triage.assignee))$('triage-assignee').append(new Option(triage.assignee+' (unavailable)',triage.assignee));const form=$('triage-form');for(const key of ['assignee','status','severity'])form.elements[key].value=triage[key];form.elements.dueAt.value=toLocalInput(triage.dueAt);form.hidden=triage.archived;$('triage-archive').hidden=!triage.archived&&triage.status!=='RESOLVED';$('triage-archive').textContent=triage.archived?'Restore incident':'Archive incident';const notes=$('triage-notes');notes.replaceChildren();if(!triage.notes.length)notes.append(element('p','No field updates yet.','muted'));for(const note of triage.notes.slice(-5).reverse()){const entry=element('div','','activity-item');entry.append(element('strong',note.author),element('p',note.text),element('small',date(note.createdAt)));notes.append(entry);}if(!$('triage-dialog').open)$('triage-dialog').showModal();}
-$('triage-form').onsubmit=event=>{event.preventDefault();run(event.submitter,async()=>{const values=Object.fromEntries(new FormData(event.target));values.dueAt=values.dueAt?new Date(values.dueAt).toISOString():'';const saved=await request(`/incident/${encodeURIComponent(triage.id)}`,'PATCH',{...values,revision:triage.revision});await loadAll();await openTriage(saved.id);$('triage-message').textContent='Coordination changes saved.';},$('triage-message'));};
-$('triage-archive').onclick=()=>run($('triage-archive'),async()=>{await request(`/incident/${encodeURIComponent(triage.id)}`,'PATCH',{revision:triage.revision,archived:!triage.archived});$('triage-dialog').close();await loadAll();notify('Incident archive status updated.');},$('triage-message'));
+async function openTriage(id){triage=await request(`/incident/${encodeURIComponent(id)}`);$('triage-reference').textContent=triage.id;$('triage-title').textContent=triage.location;$('triage-description').textContent=triage.description;$('triage-meta').textContent=`${triage.category} | Reported by ${triage.reportedBy||'Unknown'} | ${date(triage.createdAt)}`;$('triage-message').textContent='';fillPeople($('triage-assignee'),'Unassigned','',true);if(triage.assignee&&![...$('triage-assignee').options].some(option=>option.value===triage.assignee))$('triage-assignee').append(new Option(triage.assignee+' (unavailable)',triage.assignee));const form=$('triage-form');for(const key of ['assignee','status','severity'])form.elements[key].value=triage[key];form.elements.dueAt.value=toLocalInput(triage.dueAt);form.hidden=triage.archived;$('triage-archive').hidden=!triage.archived&&triage.status!=='RESOLVED';$('triage-archive').textContent=triage.archived?'Restore incident':'Archive incident';const notes=$('triage-notes');notes.replaceChildren();if(!triage.notes.length)notes.append(element('p','No field updates yet.','muted'));for(const note of triage.notes.slice(-5).reverse()){const entry=element('div','','activity-item');entry.append(element('strong',note.author),element('p',note.text),element('small',date(note.createdAt)));notes.append(entry);}renderTriageHistory(triage.history || []);if(!$('triage-dialog').open)$('triage-dialog').showModal();}
+function renderTriageHistory(history) {
+ const container = $('triage-history');
+ container.replaceChildren();
+ if (!history.length) container.append(element('p', 'No incident history yet.', 'muted'));
+ for (const event of history.slice(-30).reverse()) {
+  const entry = element('div', '', 'activity-item');
+  entry.append(element('p', event.action), element('small', `${event.actor} | ${date(event.createdAt)}`));
+  container.append(entry);
+ }
+}
+async function updateTriage(incident, changes) {
+ try {
+  return await request(`/incident/${encodeURIComponent(incident.id)}`, 'PATCH', {...changes, revision: incident.revision});
+ } catch (error) {
+  if (error.status !== 409) throw error;
+  await openTriage(incident.id);
+  $('triage-message').textContent = 'Someone updated this incident. Review the latest details before saving again.';
+  return null;
+ }
+}
+$('triage-form').onsubmit=event=>{event.preventDefault();run(event.submitter,async()=>{const values=Object.fromEntries(new FormData(event.target));values.dueAt=values.dueAt?new Date(values.dueAt).toISOString():'';const saved=await updateTriage(triage,values);if(!saved)return;await loadAll();await openTriage(saved.id);$('triage-message').textContent='Coordination changes saved.';},$('triage-message'));};
+$('triage-archive').onclick=()=>run($('triage-archive'),async()=>{if(!await updateTriage(triage,{archived:!triage.archived}))return;$('triage-dialog').close();await loadAll();notify('Incident archive status updated.');},$('triage-message'));
 $('triage-close').onclick=()=>$('triage-dialog').close();
 $('queue-select-all').onchange=event=>{for(const report of shownReports()){if(event.target.checked)selected.add(report.id);else selected.delete(report.id);}renderQueue();};
 for(const id of ['queue-status','queue-priority','queue-assignee'])$(id).onchange=()=>{queuePage=1;selected.clear();renderQueue();};$('queue-search').oninput=()=>{queuePage=1;selected.clear();renderQueue();};$('queue-prev').onclick=()=>{queuePage--;renderQueue();};$('queue-next').onclick=()=>{queuePage++;renderQueue();};$('bulk-operation').onchange=renderBulkOptions;
@@ -83,4 +103,4 @@ function exportCsv(name,items,fields){if(!items.length){notify('No matching reco
 $('queue-export').onclick=()=>exportCsv('queue',filteredReports(),['id','location','category','severity','status','assignee','dueAt','reportedBy','createdAt','archived']);$('audit-export').onclick=()=>exportCsv('audit',filteredEvents(),['id','createdAt','actor','action','target','details']);
 $('admin-refresh').onclick=()=>run($('admin-refresh'),async()=>{await loadAll();notify(policyDirty?'Lists refreshed. Your unsaved settings have been preserved.':'Workspace refreshed.');});
 $('admin-logout').onclick=async()=>{try{await request('/auth/logout','POST',{});}catch{}clearSession();location.replace('/sign-in.html');};
-(async()=>{if(!token){location.replace('/sign-in.html');return;}try{await loadAll();notify('Administrator workspace ready.');}catch(error){$('admin-content').hidden=true;notify(error.message,true);}})();
+(async()=>{if(!token){location.replace('/sign-in.html');return;}try{notify('Loading workspace…');await loadAll();notify('Administrator workspace ready.');}catch(error){$('admin-content').hidden=true;notify(error.message,true);}})();

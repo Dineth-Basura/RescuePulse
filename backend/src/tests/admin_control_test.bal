@@ -9,7 +9,7 @@ function testAdministratorAccountControls() returns error? {
     map<string> admin = {Authorization: "Bearer " + (login.token ?: "")};
     string username = "managed-" + uuid:createType4AsString().substring(0, 10);
     http:Response created = check c->post("/admin/users", {username, password: "Managed-account-2026", role: "user"}, headers = admin);
-    test:assertEquals(created.statusCode, 200);
+    test:assertEquals(created.statusCode, 201);
     AuthResponse responderLogin = check c->post("/auth/login", {username, password: "Managed-account-2026"}, targetType = AuthResponse);
     map<string> responder = {Authorization: "Bearer " + (responderLogin.token ?: "")};
     http:Response deniedSettings = check c->get("/admin/settings", headers = responder);

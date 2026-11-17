@@ -140,7 +140,7 @@ service /admin on httpListener {
             return {status: "ok", username, enabled: body.enabled, auditRecorded};
         }
     }
-    resource function post users/[string username]/revoke(http:Request req) returns json|http:Forbidden|http:BadRequest|http:NotFound {
+    resource function post users/[string username]/revoke(http:Request req) returns http:Ok|http:Forbidden|http:BadRequest|http:NotFound {
         lock {
             User? actor = currentUser(req);
             if actor is () || actor.role != "admin" { return <http:Forbidden>{body: {message: "Administrator access required"}}; }
@@ -148,7 +148,7 @@ service /admin on httpListener {
             if !users.hasKey(username) { return <http:NotFound>{body: {message: "Account not found"}}; }
             int revoked = revokeUserSessions(username);
             boolean auditRecorded = auditAdmin(actor.username, "SESSIONS_REVOKED", username, revoked.toString() + " sessions ended");
-            return {status: "ok", revoked, auditRecorded};
+            return <http:Ok>{body: {status: "ok", revoked, auditRecorded}};
         }
     }
     resource function get settings(http:Request req) returns json|http:Forbidden {
