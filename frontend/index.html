@@ -3,64 +3,832 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>RescuePulse | Early insight. Faster response.</title>
+<title>RescuePulse 2.0 | Sri Lanka Emergency Coordination Network</title>
 <link rel="icon" href="/assets/favicon.ico">
-<link rel="stylesheet" href="/dashboard.css">
-<style>.hero{display:grid;grid-template-columns:1.2fr 1fr;gap:50px;align-items:center;padding:65px 0}.hero h1{font-size:clamp(36px,5vw,65px);line-height:1.1;letter-spacing:-2px}.hero p{font-size:17px;line-height:1.8;color:#9faec4}.hero img{width:100%;max-height:440px;object-fit:contain}.hero .actions{margin:30px 0}.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}.steps .panel{padding:28px}@media(max-width:700px){.hero{grid-template-columns:1fr;padding:35px 0}.hero img{max-height:300px}.steps{grid-template-columns:1fr}}</style>
+<script defer src="/auth.js"></script>
+<style>
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg-dark: #050811;
+  --bg-card: rgba(13, 20, 36, 0.65);
+  --border-glass: rgba(255, 255, 255, 0.08);
+  --border-highlight: rgba(255, 107, 74, 0.35);
+  --coral: #ff6b4a;
+  --coral-glow: rgba(255, 107, 74, 0.45);
+  --cyan: #06b6d4;
+  --cyan-glow: rgba(6, 182, 212, 0.3);
+  --blue: #3b82f6;
+  --emerald: #10b981;
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --text-dim: #475569;
+}
+
+body {
+  background-color: var(--bg-dark);
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(30, 58, 138, 0.28) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(220, 38, 38, 0.16) 0px, transparent 50%),
+    radial-gradient(at 50% 60%, rgba(6, 182, 212, 0.08) 0px, transparent 60%),
+    radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 100% 100%, 32px 32px;
+  color: var(--text-main);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.6;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Floating Navigation */
+.header-nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  padding: 18px 40px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(5, 8, 17, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border-glass);
+}
+
+.brand-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+  color: #fff;
+}
+
+.brand-emblem {
+  width: 32px;
+  height: 32px;
+  background: linear-gradient(135deg, var(--coral) 0%, #dc2626 100%);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 800;
+  font-size: 16px;
+  box-shadow: 0 0 16px var(--coral-glow);
+}
+
+.brand-name {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+
+.brand-name small {
+  display: block;
+  font-size: 8px;
+  letter-spacing: 1.8px;
+  color: var(--cyan);
+  font-weight: 600;
+}
+
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.nav-btn {
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+
+.nav-btn:hover { color: #fff; }
+
+.nav-btn-signin {
+  padding: 8px 18px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-glass);
+  border-radius: 8px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+
+.nav-btn-signin:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Hero Section */
+.hero-wrapper {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 80px 24px 60px;
+  text-align: center;
+}
+
+.status-capsule {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(6, 182, 212, 0.08);
+  border: 1px solid rgba(6, 182, 212, 0.25);
+  padding: 6px 14px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: #38bdf8;
+  margin-bottom: 24px;
+  animation: fadeIn 0.8s ease;
+}
+
+.pulse-indicator {
+  width: 7px;
+  height: 7px;
+  background: var(--emerald);
+  border-radius: 50%;
+  box-shadow: 0 0 10px var(--emerald);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(0.9); opacity: 0.8; }
+  50% { transform: scale(1.3); opacity: 1; }
+  100% { transform: scale(0.9); opacity: 0.8; }
+}
+
+.hero-title {
+  font-size: clamp(38px, 6vw, 76px);
+  font-weight: 850;
+  letter-spacing: -2px;
+  line-height: 1.08;
+  margin-bottom: 22px;
+  color: #ffffff;
+  animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.hero-title .gradient-text {
+  background: linear-gradient(135deg, #ffffff 0%, var(--coral) 60%, #ff9e80 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.hero-desc {
+  font-size: clamp(16px, 2vw, 19px);
+  color: var(--text-muted);
+  max-width: 780px;
+  margin: 0 auto 38px;
+  line-height: 1.7;
+  animation: fadeInUp 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Call to Action Buttons */
+.hero-cta-group {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 60px;
+  animation: fadeInUp 1s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.btn-sos {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: linear-gradient(135deg, #ff6b4a 0%, #dc2626 100%);
+  color: #fff;
+  font-weight: 700;
+  font-size: 15px;
+  padding: 15px 28px;
+  border-radius: 10px;
+  text-decoration: none;
+  box-shadow: 0 4px 22px rgba(255, 107, 74, 0.45);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.btn-sos:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(255, 107, 74, 0.65);
+}
+
+.btn-choreo-hero {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: linear-gradient(180deg, #1e3a8a 0%, #172554 100%);
+  border: 1px solid #3b82f6;
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 15px 24px;
+  border-radius: 10px;
+  cursor: pointer;
+  box-shadow: 0 4px 18px rgba(30, 58, 138, 0.4);
+  transition: all 0.25s;
+}
+
+.btn-choreo-hero:hover {
+  transform: translateY(-2px);
+  border-color: #60a5fa;
+  box-shadow: 0 6px 26px rgba(59, 130, 246, 0.55);
+}
+
+.btn-workspace {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-glass);
+  color: #cbd5e1;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 15px 24px;
+  border-radius: 10px;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+
+.btn-workspace:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+/* Command HUD Visual Box (Pure CSS/HTML, No Images) */
+.hud-container {
+  max-width: 1080px;
+  margin: 0 auto 70px;
+  background: var(--bg-card);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--border-glass);
+  border-radius: 20px;
+  padding: 26px 30px;
+  box-shadow: 
+    0 30px 60px -15px rgba(0, 0, 0, 0.8),
+    0 0 0 1px rgba(255, 255, 255, 0.05);
+  text-align: left;
+  position: relative;
+  overflow: hidden;
+}
+
+.hud-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 15%;
+  right: 15%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+}
+
+.hud-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding-bottom: 16px;
+  margin-bottom: 24px;
+  font-size: 12px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.hud-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+}
+
+.hud-badge strong {
+  color: var(--emerald);
+}
+
+.hud-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+.hud-tile {
+  background: rgba(8, 14, 26, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  padding: 20px;
+  transition: border-color 0.2s, transform 0.2s;
+}
+
+.hud-tile:hover {
+  border-color: rgba(6, 182, 212, 0.4);
+  transform: translateY(-2px);
+}
+
+.hud-tile-tag {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--cyan);
+  margin-bottom: 8px;
+}
+
+.hud-tile h3 {
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 8px;
+}
+
+.hud-tile p {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+/* 4 Architecture Pillars */
+.pillars-wrapper {
+  max-width: 1240px;
+  margin: 0 auto 80px;
+  padding: 0 24px;
+}
+
+.section-head {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.section-head h2 {
+  font-size: clamp(26px, 4vw, 36px);
+  font-weight: 800;
+  letter-spacing: -1px;
+  margin-bottom: 10px;
+}
+
+.section-head p {
+  font-size: 15px;
+  color: var(--text-muted);
+}
+
+.pillars-cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+}
+
+.pillar-item {
+  background: var(--bg-card);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--border-glass);
+  border-radius: 14px;
+  padding: 28px 24px;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.pillar-item:hover {
+  border-color: var(--border-highlight);
+  transform: translateY(-4px);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5);
+}
+
+.pillar-num {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  color: var(--coral);
+  margin-bottom: 12px;
+}
+
+.pillar-item h4 {
+  font-size: 17px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 10px;
+}
+
+.pillar-item p {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+/* Hotline Advisory Banner */
+.hotline-bar {
+  max-width: 1240px;
+  margin: 0 auto 60px;
+  padding: 0 24px;
+}
+
+.hotline-content {
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  border-radius: 14px;
+  padding: 20px 28px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.hotline-text {
+  font-size: 13px;
+  color: #cbd5e1;
+}
+
+.hotline-chips {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.chip-tag {
+  background: rgba(220, 38, 38, 0.15);
+  border: 1px solid rgba(220, 38, 38, 0.35);
+  color: #fca5a5;
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* Footer */
+.main-footer {
+  border-top: 1px solid var(--border-glass);
+  padding: 30px 40px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.footer-nav {
+  display: flex;
+  gap: 20px;
+}
+
+.footer-nav a {
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.footer-nav a:hover { color: #fff; }
+
+/* Hero Image Showcase with Animations */
+.hero-image-showcase {
+  max-width: 1080px;
+  margin: 0 auto 50px;
+  position: relative;
+  perspective: 1200px;
+  animation: fadeInUp 1.1s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.hero-image-frame {
+  position: relative;
+  border-radius: 20px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #090e1a;
+  box-shadow: 
+    0 30px 80px -15px rgba(0, 0, 0, 0.85),
+    0 0 50px -10px rgba(6, 182, 212, 0.25),
+    0 0 0 1px rgba(255, 107, 74, 0.2);
+  animation: heroFloat 6s ease-in-out infinite;
+  transition: transform 0.4s ease, box-shadow 0.4s ease;
+}
+
+.hero-image-frame:hover {
+  transform: translateY(-4px) scale(1.008);
+  box-shadow: 
+    0 40px 90px -10px rgba(0, 0, 0, 0.9),
+    0 0 70px -10px rgba(6, 182, 212, 0.4),
+    0 0 0 1px rgba(255, 107, 74, 0.4);
+}
+
+.hero-img {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: cover;
+  filter: contrast(1.05) saturate(1.1);
+  transition: filter 0.3s ease;
+}
+
+/* Radar Scanline Animation */
+.radar-scanline {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  background: linear-gradient(180deg, transparent 0%, rgba(6, 182, 212, 0.25) 50%, rgba(255, 255, 255, 0.5) 100%);
+  opacity: 0.7;
+  pointer-events: none;
+  animation: radarScan 4.5s linear infinite;
+  box-shadow: 0 0 25px rgba(6, 182, 212, 0.6);
+}
+
+@keyframes radarScan {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(1100%); }
+}
+
+@keyframes heroFloat {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-7px); }
+}
+
+/* Overlay HUD elements */
+.hud-overlay-tag {
+  position: absolute;
+  z-index: 10;
+  background: rgba(9, 14, 26, 0.78);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  color: #e2e8f0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hud-overlay-tag.top-left {
+  top: 18px;
+  left: 20px;
+}
+
+.hud-overlay-tag.top-right {
+  top: 18px;
+  right: 20px;
+  color: #38bdf8;
+}
+
+.hud-overlay-tag.bottom-right {
+  bottom: 18px;
+  right: 20px;
+  color: #10b981;
+}
+
+.hud-floating-alert {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  z-index: 10;
+  background: rgba(9, 14, 26, 0.88);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 107, 74, 0.4);
+  border-left: 3px solid #ff6b4a;
+  padding: 10px 16px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+  animation: pulseSubtle 3s infinite;
+}
+
+.hud-floating-alert .alert-icon {
+  font-size: 20px;
+}
+
+.hud-floating-alert strong {
+  display: block;
+  font-size: 11px;
+  color: #ff6b4a;
+  letter-spacing: 0.8px;
+}
+
+.hud-floating-alert p {
+  margin: 0;
+  font-size: 12px;
+  color: #cbd5e1;
+}
+
+@keyframes pulseSubtle {
+  0%, 100% { box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+  50% { box-shadow: 0 10px 30px rgba(255,107,74,0.3); }
+}
+
+@media (max-width: 640px) {
+  .hud-overlay-tag.top-right { display: none; }
+  .hud-floating-alert { left: 10px; right: 10px; bottom: 10px; }
+  .hud-overlay-tag.bottom-right { display: none; }
+}
+
+/* Animations */
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+
+@media (max-width: 960px) {
+  .hud-grid { grid-template-columns: 1fr; }
+  .pillars-cards { grid-template-columns: repeat(2, 1fr); }
+  .header-nav { padding: 16px 20px; }
+}
+
+@media (max-width: 600px) {
+  .hero-wrapper { padding: 50px 16px 40px; }
+  .pillars-cards { grid-template-columns: 1fr; }
+  .hero-cta-group { flex-direction: column; width: 100%; }
+  .hero-cta-group a, .hero-cta-group button { width: 100%; justify-content: center; }
+  .hud-container { padding: 18px; }
+  .hotline-content { flex-direction: column; align-items: flex-start; }
+}
+</style>
 </head>
 <body>
-<header>
-<a class="brand" href="/">✚ <span>RescuePulse<small>EARLY INSIGHT. FASTER RESPONSE.</small>
-</span>
-</a>
-<nav class="actions">
-<a href="/docs.html">Help center</a>
-<a class="quiet" href="/sign-in.html">Sign in</a>
-</nav>
+
+<header class="header-nav">
+  <a class="brand-box" href="/">
+    <div class="brand-emblem">✚</div>
+    <div class="brand-name">
+      RescuePulse
+      <small>EARLY INSIGHT. FASTER RESPONSE.</small>
+    </div>
+  </a>
+
+  <nav class="nav-actions">
+    <a href="/citizen.html" class="nav-btn">Citizen SOS</a>
+    <a href="/docs.html" class="nav-btn">Help Center</a>
+    <a href="/sign-in.html" class="nav-btn-signin">Sign In →</a>
+  </nav>
 </header>
+
 <main>
-<section class="hero">
-<div>
-<span class="badge">RESPONSE OPERATIONS FOR SRI LANKA</span>
-<h1>See the risk.<br>
-<span style="color:#ff845f">Coordinate<br>the response.</span>
-</h1>
-<p>Turn weather observations into a shared view of risk. Report incidents, track response progress, and keep your team informed in one workspace.</p>
-<div class="actions">
-<a class="primary" href="/sign-up.html">Get started →</a>
-<a class="quiet" href="/user-dashboard.html">Open response center</a>
-</div>
-<span class="eyebrow">ASSESS · UNDERSTAND · RESPOND</span>
-</div>
-<div>
-<img src="/assets/images/map.png" alt="Sri Lanka map illustration">
-<p class="footnote" style="text-align:center">District overview · No live monitoring feed</p>
-</div>
-</section>
-<div class="notice">
-<span>ⓘ</span>
-<p>
-<strong>Built for coordinated response.</strong> Report incidents, assign responders, record field updates and track work through to resolution.</p>
-</div>
-<section class="steps" style="margin-top:25px">
-<article class="panel">
-<span class="eyebrow">01 / ASSESS</span>
-<h2>Explore conditions</h2>
-<p class="muted">Record weather observations for a district and review its risk index.</p>
-</article>
-<article class="panel">
-<span class="eyebrow">02 / UNDERSTAND</span>
-<h2>Explain the risk</h2>
-<p class="muted">See a bounded risk index with consistent thresholds and visible input weights.</p>
-</article>
-<article class="panel">
-<span class="eyebrow">03 / RESPOND</span>
-<h2>Track every incident</h2>
-<p class="muted">Assign responders, set deadlines and keep a clear record of every update.</p>
-</article>
-</section>
-<footer>RescuePulse · Response coordination · <a href="/docs.html">Help center</a>
-</footer>
+  <section class="hero-wrapper">
+    <div class="status-capsule">
+      <span class="pulse-indicator"></span>
+      Sri Lanka Operational Disaster Mesh · 25 Districts
+    </div>
+
+    <h1 class="hero-title">
+      When Every Second Counts.<br>
+      <span class="gradient-text">Coordinated Rescue Response.</span>
+    </h1>
+
+    <p class="hero-desc">
+      RescuePulse connects citizens in crisis with district coordinators and specialized field teams across Sri Lanka. Built on real-time spatial mapping, Open-Meteo telemetry, and server-side Gemini AI.
+    </p>
+
+    <div class="hero-cta-group">
+      <a class="btn-sos" href="/citizen.html">
+        <span>🚨</span> Submit Citizen SOS Report
+      </a>
+      <button id="choreo-login-btn" type="button" class="btn-choreo-hero">
+        <span>🌐</span> Sign In with Choreo Identity
+      </button>
+      <a class="btn-workspace" href="/sign-in.html">
+        Workspace Access →
+      </a>
+    </div>
+
+    <!-- Animated Futuristic Hero Visual Showcase -->
+    <div class="hero-image-showcase">
+      <div class="hero-image-frame">
+        <img src="/assets/images/hero-command-center.jpg" alt="RescuePulse Sri Lanka Disaster Response Command Center" class="hero-img">
+        <div class="radar-scanline"></div>
+        
+        <!-- Live HUD Overlay Elements -->
+        <div class="hud-overlay-tag top-left">
+          <span class="pulse-indicator"></span>
+          <span>LIVE SATELLITE DISASTER MESH · 25 DISTRICTS</span>
+        </div>
+        
+        <div class="hud-overlay-tag top-right">
+          <span>SRI LANKA COORDINATES: 7.8731° N, 80.7718° E</span>
+        </div>
+
+        <div class="hud-floating-alert">
+          <div class="alert-icon">💧</div>
+          <div>
+            <strong>SECTOR ALERT: KALU GANGA BASIN</strong>
+            <p>Rapid Inflow Monitored · Rescue Boat Team Alpha Deployed</p>
+          </div>
+        </div>
+
+        <div class="hud-overlay-tag bottom-right">
+          <span>REAL-TIME TELEMETRY: 12ms</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pure CSS/HTML HUD Telemetry Visual -->
+    <div class="hud-container">
+      <div class="hud-topbar">
+        <div class="hud-badge">
+          <span>● GRID STATUS:</span> <strong>OPERATIONAL</strong>
+        </div>
+        <div class="hud-badge">
+          <span>TELEMETRY:</span> <strong>Open-Meteo (Asia/Colombo)</strong>
+        </div>
+        <div class="hud-badge">
+          <span>AI ENGINE:</span> <strong>Gemini 2.5 Flash</strong>
+        </div>
+        <div class="hud-badge">
+          <span>IDENTITY:</span> <strong>OIDC PKCE (anvora)</strong>
+        </div>
+      </div>
+
+      <div class="hud-grid">
+        <div class="hud-tile">
+          <div class="hud-tile-tag">01 / WEATHER INTELLIGENCE</div>
+          <h3>Atmospheric Telemetry</h3>
+          <p>Real-time observation data monitoring rainfall, humidity, and wind gusts at the exact coordinate of reported incidents.</p>
+        </div>
+
+        <div class="hud-tile">
+          <div class="hud-tile-tag">02 / AI DECISION SUPPORT</div>
+          <h3>Triage & Duplicate Shield</h3>
+          <p>Algorithmic urgency assessment, automated duplicate report detection, and concise mission briefs for district coordinators.</p>
+        </div>
+
+        <div class="hud-tile">
+          <div class="hud-tile-tag">03 / TACTICAL DISPATCH</div>
+          <h3>Field Mission Tracking</h3>
+          <p>Deterministic team recommendations by proximity and workload. Full lifecycle progression: En Route, On Scene, and Resolved.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 Pillars Section -->
+  <section class="pillars-wrapper">
+    <div class="section-head">
+      <h2>Architecture Engineered for Clarity</h2>
+      <p>Precision emergency coordination without cluttered dashboards or fabricated metrics.</p>
+    </div>
+
+    <div class="pillars-cards">
+      <article class="pillar-item">
+        <div class="pillar-num">PILLAR 01</div>
+        <h4>Citizen SOS Reporting</h4>
+        <p>Interactive Leaflet GPS location selection, 5MB photographic uploads with magic-byte validation, and instant tracking references.</p>
+      </article>
+
+      <article class="pillar-item">
+        <div class="pillar-num">PILLAR 02</div>
+        <h4>AI Priority Analysis</h4>
+        <p>Server-side Gemini 2.5 Flash analyzes crisis context, flags potential duplicate reports, and supports human coordinators.</p>
+      </article>
+
+      <article class="pillar-item">
+        <div class="pillar-num">PILLAR 03</div>
+        <h4>Smart Dispatch Scoring</h4>
+        <p>Deterministic scoring recommends available responders based on active missions, proximity, and operational availability.</p>
+      </article>
+
+      <article class="pillar-item">
+        <div class="pillar-num">PILLAR 04</div>
+        <h4>Verified Shelters</h4>
+        <p>Interactive spatial layer of verified relief shelters across Sri Lanka with live occupancy and safe access routes.</p>
+      </article>
+    </div>
+  </section>
+
+  <!-- Emergency Hotline Bar -->
+  <section class="hotline-bar">
+    <div class="hotline-content">
+      <div class="hotline-text">
+        <strong>⚠️ Prototype & Simulation Platform:</strong> For real immediate life-threatening emergencies in Sri Lanka, contact official emergency services directly.
+      </div>
+      <div class="hotline-chips">
+        <span class="chip-tag">DMC: 117</span>
+        <span class="chip-tag">Police: 119</span>
+        <span class="chip-tag">Ambulance: 1990</span>
+        <span class="chip-tag">Fire: 110</span>
+      </div>
+    </div>
+  </section>
 </main>
+
+<footer class="main-footer">
+  <div>RescuePulse 2.0 · Sri Lanka Disaster Coordination Network</div>
+  <div class="footer-nav">
+    <a href="/citizen.html">Citizen Portal</a>
+    <a href="/sign-in.html">Workspace Login</a>
+    <a href="/docs.html">Help Center</a>
+  </div>
+</footer>
+
 </body>
 </html>

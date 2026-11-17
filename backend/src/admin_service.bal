@@ -72,6 +72,7 @@ service /admin on httpListener {
             json[] workloads = [];
             foreach var incident in incidents {
                 if incident.archived { archived += 1; continue; }
+                if incident.verificationStatus == "REJECTED" { continue; }
                 if incident.status == "RESOLVED" { resolved += 1; continue; }
                 open += 1;
                 if incident.assignee == "" { unassigned += 1; }
@@ -101,7 +102,7 @@ service /admin on httpListener {
             User? actor = currentUser(req);
             if actor is () || actor.role != "admin" { return <http:Forbidden>{body: {message: "Administrator access required"}}; }
             string username = body.username.trim().toLowerAscii();
-            if !validUsername(username) || username == "admin" || body.password.length() < 8 || body.password.toBytes().length() > 72 || (body.role != "user" && body.role != "admin") {
+            if !validUsername(username) || username == "admin" || body.password.length() < 8 || body.password.toBytes().length() > 72 || (body.role != "user" && body.role != "admin" && body.role != "citizen") {
                 return <http:BadRequest>{body: {message: "Use a valid username, role and an 8-72 byte password"}};
             }
             if users.hasKey(username) { return <http:Conflict>{body: {message: "Username already exists"}}; }
@@ -116,7 +117,7 @@ service /admin on httpListener {
         lock {
             User? actor = currentUser(req);
             if actor is () || actor.role != "admin" { return <http:Forbidden>{body: {message: "Administrator access required"}}; }
-            if body.role != "admin" && body.role != "user" { return <http:BadRequest>{body: {message: "Choose a valid account role"}}; }
+            if body.role != "admin" && body.role != "user" && body.role != "citizen" { return <http:BadRequest>{body: {message: "Choose a valid account role"}}; }
             if username == actor.username || username == "admin" { return <http:BadRequest>{body: {message: "Your own role and the primary administrator role are protected"}}; }
             var previous = users[username];
             if previous is () { return <http:NotFound>{body: {message: "Account not found"}}; }
@@ -183,6 +184,39 @@ service /admin on httpListener {
                 }
             }
             return {events: out};
+        }
+    }
+
+    resource function get recommend/[string id](http:Request req) returns json|http:Forbidden|http:NotFound {
+        lock {
+            if !isAdmin(req) { return <http:Forbidden>{body: {message: "Administrator access required"}}; }
+            var incident = incidents[id];
+            if incident is () { return <http:NotFound>{body: {message: "Incident not found"}}; }
+            json[] recs = [];
+            foreach var user in users {
+                if user.enabled && user.role == "user" {
+                    int assigned = 0;
+                    foreach var inc in incidents {
+                        if !inc.archived && inc.status != "RESOLVED" && inc.assignee == user.username {
+                            assigned += 1;
+                        }
+                    }
+                    boolean available = user.status == "AVAILABLE";
+                    int score = available ? 60 : 20;
+                    int workloadScore = 30 - (assigned * 10);
+                    if workloadScore < 0 { workloadScore = 0; }
+                    score += workloadScore;
+                    string reason = (available ? "Available" : "Busy") + " · Workload: " + assigned.toString() + " active mission" + (assigned == 1 ? "" : "s");
+                    recs.push({
+                        username: user.username,
+                        status: user.status,
+                        activeMissions: assigned,
+                        score: score,
+                        reason: reason
+                    });
+                }
+            }
+            return {incidentId: id, recommendations: recs};
         }
     }
 }

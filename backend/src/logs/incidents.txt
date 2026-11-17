@@ -1,2 +1,0 @@
-inc-1	LOC-DEMO	Test event	LOW	OPEN	t-2	t-3
-inc-4	LOC-DEMO	Test event	LOW	OPEN	t-5	t-6

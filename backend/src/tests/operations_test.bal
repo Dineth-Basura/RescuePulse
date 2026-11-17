@@ -8,12 +8,12 @@ type NotificationList Notification[];
 function testOperationalPermissionsAndLifecycle() returns error? {
     http:Client c = check new ("http://localhost:8080");
     string username = "ops-" + uuid:createType4AsString().substring(0, 12);
-    AuthResponse signup = check c->post("/auth/signup", {username, password: "Operations-test-2026"}, targetType = AuthResponse);
-    test:assertEquals(signup.status, "ok");
-    AuthResponse login = check c->post("/auth/login", {username, password: "Operations-test-2026"}, targetType = AuthResponse);
-    map<string> responder = {Authorization: "Bearer " + (login.token ?: "")};
     AuthResponse adminLogin = check c->post("/auth/login", {username: "admin", password: "Test-only-password-2026"}, targetType = AuthResponse);
     map<string> coordinator = {Authorization: "Bearer " + (adminLogin.token ?: "")};
+    http:Response created = check c->post("/admin/users", {username, password: "Operations-test-2026", role: "user"}, headers = coordinator);
+    test:assertEquals(created.statusCode, 201);
+    AuthResponse login = check c->post("/auth/login", {username, password: "Operations-test-2026"}, targetType = AuthResponse);
+    map<string> responder = {Authorization: "Bearer " + (login.token ?: "")};
     Incident report = check c->post("/incident/create", {location: "Ratnapura", description: "Water level rising near access road", severity: "HIGH", category: "FLOOD"}, headers = responder, targetType = Incident);
     test:assertEquals(report.reportedBy, username);
     test:assertEquals(report.history.length(), 1);

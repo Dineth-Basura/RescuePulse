@@ -3,6 +3,7 @@ const $ = id => document.getElementById(id);
 let current = null, account = null, incidents = [], members = [], selectedIncident = null;
 let page = 1, autoRefresh = true, refreshing = false;
 let aiConfigured = false, aiHandover = null, lastAssessment = null;
+let responderMap=null;
 const pageSize = 10;
 const token = localStorage.getItem('rp_token');
 function message(text, error = false) { $('message').textContent = text; $('message').className = error ? 'error' : ''; $('message').hidden = false; }
@@ -64,7 +65,7 @@ async function refresh() {
  try {
   const identity=await api('/auth/me');if(identity.role==='admin'){location.replace('/admin-dashboard.html');return;}account=identity;
   const [list,stats,notices,weather] = await Promise.all([api('/incident/list'),api('/data/stats'),api('/notify/list'),api('/data/all')]);
-  incidents = list.sort((a,b) => b.updatedAt.localeCompare(a.updatedAt));renderIncidents();$('observations').textContent = stats.count;renderNotices(notices);
+  incidents = list.sort((a,b) => b.updatedAt.localeCompare(a.updatedAt));renderIncidents();renderResponderMap();$('observations').textContent = stats.count;renderNotices(notices);
   if (Array.isArray(weather) && weather.length) { const high = weather.reduce((a,b) => riskFromReading(b)>riskFromReading(a)?b:a);$('highest').textContent = `${Math.round(riskFromReading(high)*100)}/100`;$('highest-location').textContent = high.location; }
   $('connection').textContent = `Connected | updated ${new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}`;
  } finally { refreshing = false; }
@@ -93,7 +94,30 @@ async function openIncident(id) {
  $('detail-title').textContent = inc.location; $('detail-id').textContent = inc.id;
  $('detail-meta').textContent = `Reported by ${inc.reportedBy || 'Legacy report'} | ${date(inc.createdAt)} | ${inc.status}${inc.archived ? ' | Archived' : ''}`;
  $('detail-description').textContent = inc.description; $('detail-message').textContent = '';
- const canManage = account.role === 'admin' || inc.assignee === account.username;
+ const attachWrap = $('detail-attachment-wrap');
+ if (attachWrap) {
+  if (inc.attachmentUrl) {
+   attachWrap.style.display = 'block';
+   const authUrl = token ? `${inc.attachmentUrl}?token=${encodeURIComponent(token)}` : inc.attachmentUrl;
+   $('detail-attachment-img').src = authUrl;
+   $('detail-attachment-img').onclick = () => window.open(authUrl, '_blank');
+   $('detail-attachment-name').textContent = `${inc.attachmentName || 'Photo'} (click to view full size)`;
+  } else {
+   attachWrap.style.display = 'none';
+  }
+ }
+ const contactEl = $('detail-contact');
+ if (contactEl) {
+  if (inc.contactInfo) {
+   contactEl.textContent = `Citizen Contact Info: ${inc.contactInfo}`;
+   contactEl.style.display = 'block';
+  } else {
+   contactEl.style.display = 'none';
+  }
+ }
+ const weatherOutput = $('detail-weather-display');
+ if (weatherOutput) weatherOutput.textContent = '';
+ const canManage = account.role === 'admin' || (inc.assignee === account.username && inc.originRole !== 'citizen');
  const detailForm = $('detail-form'); detailForm.hidden = !canManage || inc.archived;
  for(const key of ['location','category','severity','status','description','assignee']) detailForm.elements[key].value = inc[key] || (key === 'category' ? 'OTHER' : '');
  detailForm.elements.dueAt.value = toLocalInput(inc.dueAt);
@@ -108,6 +132,7 @@ async function openIncident(id) {
  const history = $('detail-history');history.replaceChildren();
  if (!inc.history?.length) history.append(node('p','No incident history yet.','muted'));
  for(const event of (inc.history || []).slice(-30).reverse()) {const entry = node('div','','activity-item');entry.append(node('p',event.action),node('small',`${event.actor} | ${date(event.createdAt)}`));history.append(entry);}
+ renderResponderMission(inc);
  $('note-form').hidden = inc.archived;$('note-form').reset();
  if (!$('incident-dialog').open) $('incident-dialog').showModal();
 }
@@ -170,7 +195,7 @@ form.addEventListener('submit',event => {event.preventDefault();busy(event.submi
 });});
 $('create-from-risk').onclick=()=>busy($('create-from-risk'),async()=>{if(!current)return;const result=await api('/incident/create','POST',{location:current.location,description:`Weather assessment: risk index ${Math.round(current.score*100)}/100. Conditions require field verification.`,severity:level(current.score),category:'STORM'});current=null;await refresh();await openIncident(result.id);message('Incident created.');}).then(()=>{$('create-from-risk').disabled=!current;});
 $('report-toggle').onclick=()=>{$('incident-form').hidden=!$('incident-form').hidden;};
-$('incident-form').onsubmit=event=>{event.preventDefault();busy(event.submitter,async()=>{const values=Object.fromEntries(new FormData(event.target));await api('/incident/create','POST',values);event.target.reset();event.target.hidden=true;page=1;await refresh();message('Incident reported.');});};
+$('incident-form').onsubmit=event=>{event.preventDefault();busy(event.submitter,async()=>{const values=Object.fromEntries(new FormData(event.target));values.affectedPeople=Number(values.affectedPeople||0);values.assistanceRequested=values.assistanceRequested==='true';if(values.latitude!==''&&values.longitude!==''){values.latitude=Number(values.latitude);values.longitude=Number(values.longitude);}else{delete values.latitude;delete values.longitude;}await api('/incident/create','POST',values);responderMap?.clearPin();event.target.reset();event.target.hidden=true;page=1;await refresh();message('Incident reported.');});};
 for(const id of ['status-filter','severity-filter','owner-filter','archive-filter'])$(id).onchange=()=>{page=1;renderIncidents();};
 $('incident-search').oninput=()=>{page=1;renderIncidents();};
 $('page-prev').onclick=()=>{page--;renderIncidents();};$('page-next').onclick=()=>{page++;renderIncidents();};
@@ -186,4 +211,76 @@ function clearSession(){['rp_token','rp_user','rp_role'].forEach(key=>localStora
 $('logout').onclick=async()=>{try{await api('/auth/logout','POST',{});}catch{}clearSession();location.replace('/sign-in.html');};$('mobile-logout').onclick=()=>$('logout').click();
 function tick(){$('clock').textContent=new Date().toLocaleString('en-LK',{timeZone:'Asia/Colombo',dateStyle:'medium',timeStyle:'short'});}tick();setInterval(tick,30000);
 setInterval(()=>{if(autoRefresh&&account&&!document.hidden&&!$('incident-dialog').open&&!$('account-dialog').open&&!refreshing)refresh().catch(error=>{$('connection').textContent='Refresh unavailable';message(error.message,true);});},30000);
-(async()=>{if(!token){location.replace('/sign-in.html');return;}try{account=await api('/auth/me');if(account.role==='admin'){location.replace('/admin-dashboard.html');return;}$('identity').textContent=`${account.username} | ${account.role==='admin'?'Coordinator':'Responder'}`;$('admin-link').hidden=account.role!=='admin';$('notification-form').hidden=account.role!=='admin';const directory=await api('/operations/members');members=directory.members;await loadAiStatus();fillMemberSelect($('detail-assignee'));fillMemberSelect($('notification-target'),true);await refresh();}catch(error){$('connection').textContent='Connection unavailable';message(error.message,true);}})();
+(async()=>{if(!token){location.replace('/sign-in.html');return;}try{account=await api('/auth/me');if(account.role==='admin'){location.replace('/admin-dashboard.html');return;}if(account.role==='citizen'){location.replace('/citizen.html');return;}updateStatusButton();responderMap=window.RescueMap?.create('responder-map',{onPick:pos=>{$('report-latitude').value=pos.latitude;$('report-longitude').value=pos.longitude;$('incident-form').hidden=false;message('Map position selected. Complete the incident report below.');}});$('identity').textContent=`${account.username} | ${account.role==='admin'?'Coordinator':'Responder'}`;$('admin-link').hidden=account.role!=='admin';$('notification-form').hidden=account.role!=='admin';const directory=await api('/operations/members');members=directory.members;await loadAiStatus();fillMemberSelect($('detail-assignee'));fillMemberSelect($('notification-target'),true);await refresh();}catch(error){$('connection').textContent='Connection unavailable';message(error.message,true);}})();
+
+function renderResponderMap(){
+ if(!responderMap){$('responder-map-status').textContent='Map unavailable. Incident list remains accessible.';return;}
+ const count=responderMap.update(incidents,item=>openIncident(item.id).catch(e=>message(e.message,true)));
+ $('responder-map-status').textContent=`${count} of ${incidents.length} authorized reports have mapped coordinates. Click the map to select a new report location.`;
+}
+function renderResponderMission(incident){
+ const root=$('detail-mission-actions');root.replaceChildren();
+ const status=incident.missionStatus||'UNASSIGNED',verify=incident.verificationStatus||'PENDING';
+ $('detail-mission-status').textContent=`Review: ${verify} | Mission: ${status} | Assigned: ${incident.assignee||'Nobody'}`;
+ $('detail-mission').hidden=incident.archived||incident.assignee!==account?.username;
+ const choices={ASSIGNED:[['Accept mission','ACCEPT'],['Decline assignment','DECLINE']],ACCEPTED:[['Mark en route','EN_ROUTE']],EN_ROUTE:[['Mark on scene','ON_SCENE']],ON_SCENE:[['Complete mission','COMPLETE']]};
+ if(verify!=='VERIFIED'){root.append(node('small','A coordinator must verify this report before mission actions can proceed.'));return;}
+ for(const [label,action] of choices[status]||[]){
+  const button=node('button',label,action==='DECLINE'?'quiet':'primary');
+  button.onclick=()=>busy(button,async()=>{
+   let outcome = '';
+   if(action==='COMPLETE'){
+    outcome = prompt('Enter brief mission outcome (assistance rendered / safe relocation):') || '';
+    if(!confirm('Confirm simulated mission completion?'))return;
+   }
+   const updated=await api(`/incident/${encodeURIComponent(incident.id)}/mission`,'POST',{action,outcome,revision:incident.revision});
+   await refresh();await openIncident(updated.id);
+  },$('detail-message'));
+  root.append(button);
+ }
+}
+function updateStatusButton() {
+ const btn = $('responder-status-toggle');
+ if (!btn) return;
+ const st = account?.status || 'AVAILABLE';
+ btn.textContent = st;
+ btn.style.background = st === 'AVAILABLE' ? '#15803d' : '#854d0e';
+ btn.style.color = '#fff';
+}
+$('responder-status-toggle').onclick = () => busy($('responder-status-toggle'), async () => {
+ const currentStatus = account?.status || 'AVAILABLE';
+ const newStatus = currentStatus === 'AVAILABLE' ? 'BUSY' : 'AVAILABLE';
+ await api('/operations/status', 'PUT', {status: newStatus});
+ account.status = newStatus;
+ updateStatusButton();
+ message(`Your operational availability updated to ${newStatus}.`);
+});
+$('detail-weather-btn').onclick = () => busy($('detail-weather-btn'), async () => {
+ const output = $('detail-weather-display');
+ output.textContent = 'Checking Open-Meteo weather for incident location…';
+ let lat = selectedIncident?.latitude, lon = selectedIncident?.longitude;
+ if (lat === null || lat === undefined || lon === null || lon === undefined) {
+  if (responderMap) {
+   const c = responderMap.map.getCenter();
+   lat = c.lat; lon = c.lng;
+  } else {
+   throw new Error('Coordinates not recorded for this report.');
+  }
+ }
+ try {
+  const res = await RescueWeather.current(lat, lon);
+  const summary = RescueWeather.formatSummary(res);
+  output.textContent = `${summary.text} · ${summary.disclaimer}`;
+ } catch (e) {
+  output.textContent = e.message;
+ }
+});
+$('responder-map-refresh').onclick=()=>busy($('responder-map-refresh'),refresh);
+$('responder-weather').onclick=()=>busy($('responder-weather'),async()=>{
+ const output=$('responder-weather-current');output.textContent='Loading Open-Meteo observations…';
+ if(!responderMap)throw new Error('Map is not available');
+ const pos=responderMap.map.getCenter();
+ try{const weather=await RescueWeather.current(pos.lat,pos.lng);const x=weather.current;
+ output.textContent=`Open-Meteo ${x.time}: ${x.temperature_2m}°C, ${x.relative_humidity_2m}% RH, ${x.precipitation} mm precipitation, ${x.wind_speed_10m} km/h wind. Not an official warning.`;
+ }catch(e){output.textContent=e.message;}
+});

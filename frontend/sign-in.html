@@ -3,37 +3,460 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>RescuePulse | Welcome back</title>
-<link rel="stylesheet" href="/dashboard.css">
-<script defer src="/auth.js">
-</script>
+<title>RescuePulse | Secure Workspace Authentication</title>
+<link rel="icon" href="/assets/favicon.ico">
+<script defer src="/auth.js"></script>
+<style>
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg-primary: #060a12;
+  --bg-surface: rgba(15, 23, 42, 0.72);
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-focus: #ff6b4a;
+  --accent-coral: #ff6b4a;
+  --accent-blue: #3b82f6;
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --text-dim: #64748b;
+  --radius-lg: 18px;
+  --radius-md: 10px;
+}
+
+body {
+  background-color: var(--bg-primary);
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(30, 58, 138, 0.22) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(220, 38, 38, 0.12) 0px, transparent 50%),
+    radial-gradient(at 50% 100%, rgba(15, 23, 42, 0.8) 0px, transparent 70%),
+    radial-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 100% 100%, 28px 28px;
+  color: var(--text-main);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+}
+
+/* Nav Header */
+.top-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 22px 36px;
+  background: rgba(6, 10, 18, 0.6);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--border-subtle);
+  animation: fadeIn 0.5s ease;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+  color: var(--text-main);
+}
+
+.brand-icon {
+  width: 34px;
+  height: 34px;
+  background: linear-gradient(135deg, #ff6b4a 0%, #dc2626 100%);
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 18px;
+  font-weight: 800;
+  box-shadow: 0 0 20px rgba(255, 107, 74, 0.4);
+}
+
+.brand-text {
+  font-size: 19px;
+  font-weight: 750;
+  letter-spacing: -0.5px;
+}
+
+.brand-text small {
+  display: block;
+  font-size: 8px;
+  letter-spacing: 1.8px;
+  color: var(--text-dim);
+  font-weight: 600;
+  margin-top: 1px;
+}
+
+.nav-link {
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 13px;
+  transition: color 0.2s;
+}
+
+.nav-link:hover {
+  color: #fff;
+}
+
+/* Card Container */
+.auth-wrapper {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 440px;
+  background: var(--bg-surface);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 38px 34px;
+  box-shadow: 
+    0 25px 50px -12px rgba(0, 0, 0, 0.7),
+    0 0 0 1px rgba(255, 255, 255, 0.05);
+  animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  position: relative;
+}
+
+.auth-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 20%;
+  right: 20%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 107, 74, 0.6), transparent);
+}
+
+/* Header Inside Card */
+.card-header {
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.badge-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.1);
+  padding: 4px 10px;
+  border-radius: 99px;
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  margin-bottom: 12px;
+}
+
+.status-dot-pulse {
+  width: 6px;
+  height: 6px;
+  background: #38bdf8;
+  border-radius: 50%;
+  box-shadow: 0 0 8px #38bdf8;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(0.95); opacity: 0.8; }
+  50% { transform: scale(1.3); opacity: 1; }
+  100% { transform: scale(0.95); opacity: 0.8; }
+}
+
+.card-header h1 {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.6px;
+  margin-bottom: 6px;
+}
+
+.card-header p {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* Choreo SSO Button */
+.choreo-btn-wrap {
+  margin-bottom: 24px;
+}
+
+.btn-choreo {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 13px 18px;
+  background: linear-gradient(180deg, #1e3a8a 0%, #172554 100%);
+  border: 1px solid #3b82f6;
+  border-radius: var(--radius-md);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(30, 58, 138, 0.4);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-choreo::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+  transform: rotate(45deg);
+  transition: all 0.5s;
+}
+
+.btn-choreo:hover {
+  transform: translateY(-1.5px);
+  border-color: #60a5fa;
+  box-shadow: 0 6px 24px rgba(59, 130, 246, 0.5);
+}
+
+.btn-choreo:hover::after {
+  left: 100%;
+}
+
+.btn-choreo svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+
+/* Divider */
+.divider {
+  display: flex;
+  align-items: center;
+  margin: 22px 0;
+  color: var(--text-dim);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1.2px;
+}
+
+.divider::before, .divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+}
+
+.divider span {
+  padding: 0 14px;
+}
+
+/* Input Fields */
+.input-group {
+  margin-bottom: 18px;
+}
+
+.input-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #cbd5e1;
+  margin-bottom: 7px;
+}
+
+.input-box {
+  width: 100%;
+  background: rgba(8, 14, 26, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: var(--radius-md);
+  padding: 12px 15px;
+  font-size: 14px;
+  color: #fff;
+  transition: all 0.2s ease;
+}
+
+.input-box:focus {
+  outline: none;
+  border-color: var(--accent-coral);
+  background: rgba(8, 14, 26, 0.95);
+  box-shadow: 0 0 0 3px rgba(255, 107, 74, 0.18);
+}
+
+.input-box::placeholder {
+  color: #475569;
+}
+
+/* Submit Button */
+.btn-submit {
+  width: 100%;
+  padding: 13px 20px;
+  background: linear-gradient(135deg, #ff6b4a 0%, #ee5253 100%);
+  border: none;
+  border-radius: var(--radius-md);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 18px rgba(255, 107, 74, 0.35);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  margin-top: 6px;
+}
+
+.btn-submit:hover {
+  transform: translateY(-1.5px);
+  box-shadow: 0 8px 24px rgba(255, 107, 74, 0.5);
+}
+
+.btn-submit:active {
+  transform: translateY(0);
+}
+
+.btn-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Feedback message */
+#auth-message {
+  font-size: 12px;
+  text-align: center;
+  min-height: 20px;
+  margin-top: 14px;
+  transition: all 0.2s;
+}
+
+#auth-message.muted { color: var(--text-muted); }
+#auth-message.error { color: #f87171; }
+
+/* Footer */
+.card-footer {
+  text-align: center;
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.card-footer a {
+  color: var(--accent-coral);
+  text-decoration: none;
+  font-weight: 600;
+  margin-left: 4px;
+  transition: color 0.15s;
+}
+
+.card-footer a:hover {
+  text-decoration: underline;
+  color: #ffa180;
+}
+
+.page-footnote {
+  text-align: center;
+  padding: 20px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 480px) {
+  .top-nav { padding: 16px 20px; }
+  .auth-card { padding: 28px 22px; }
+  .card-header h1 { font-size: 21px; }
+}
+</style>
 </head>
 <body>
-<header>
-<a class="brand" href="/">✚ <span>RescuePulse<small>EARLY INSIGHT. FASTER RESPONSE.</small>
-</span>
-</a>
-<a href="/docs.html">Help center</a>
+
+<header class="top-nav">
+  <a class="brand" href="/">
+    <div class="brand-icon">✚</div>
+    <div class="brand-text">
+      RescuePulse
+      <small>EARLY INSIGHT. FASTER RESPONSE.</small>
+    </div>
+  </a>
+  <a href="/docs.html" class="nav-link">Help Center</a>
 </header>
-<main style="max-width:500px;padding-top:70px">
-<span class="eyebrow">RESPONSE CENTER / ACCESS</span>
-<h1>Welcome back</h1>
-<p class="muted">Your workspace for coordinated disaster response.</p>
-<section class="panel" style="margin-top:28px">
-<form id="auth-form" data-action="login">
-<label>Username<input name="username" autocomplete="username" pattern="[A-Za-z0-9_-]{3,40}" minlength="3" maxlength="40" required placeholder="Your username">
-</label>
-<label>Password<input name="password" type="password" autocomplete="current-password" minlength="8" maxlength="72" required placeholder="At least 8 characters">
-</label>
-<button class="primary" style="width:100%" type="submit">Sign in</button>
-<p id="auth-message" role="status" aria-live="polite" class="muted">
-</p>
-</form>
-<p class="muted">
-<a href="/sign-up.html">New here? Create an account →</a>
-</p>
-</section>
-<p class="footnote">Keep your account details private. Contact your coordinator if you need different workspace permissions.</p>
+
+<main class="auth-wrapper">
+  <div class="auth-card">
+    <div class="card-header">
+      <div class="badge-tag">
+        <span class="status-dot-pulse"></span>
+        SECURE GATEWAY
+      </div>
+      <h1>Sign in to RescuePulse</h1>
+      <p>Sri Lanka Emergency Coordination Platform</p>
+    </div>
+
+    <!-- Enterprise Choreo Identity Platform Section -->
+    <div class="choreo-btn-wrap">
+      <button id="choreo-login-btn" type="button" class="btn-choreo">
+        <svg viewBox="0 0 24 24">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+        </svg>
+        Sign in with Choreo Identity
+      </button>
+    </div>
+
+    <div class="divider">
+      <span>OR USE WORKSPACE CREDENTIALS</span>
+    </div>
+
+    <!-- Local Credentials Form -->
+    <form id="auth-form" data-action="login">
+      <div class="input-group">
+        <label class="input-label" for="input-username">Username</label>
+        <input class="input-box" id="input-username" name="username" autocomplete="username" pattern="[A-Za-z0-9_\-]{3,40}" minlength="3" maxlength="40" required placeholder="Enter username">
+      </div>
+
+      <div class="input-group">
+        <label class="input-label" for="input-password">Password</label>
+        <input class="input-box" id="input-password" name="password" type="password" autocomplete="current-password" minlength="8" maxlength="72" required placeholder="Enter password">
+      </div>
+
+      <button class="btn-submit" type="submit">Sign In to Workspace →</button>
+      <p id="auth-message" role="status" aria-live="polite" class="muted"></p>
+    </form>
+
+    <div class="card-footer">
+      New community reporter? <a href="/sign-up.html">Create an account</a>
+    </div>
+  </div>
 </main>
+
+<footer class="page-footnote">
+  RescuePulse 2.0 · End-to-End Encrypted Session · Sri Lanka Disaster Operations Simulation
+</footer>
+
 </body>
 </html>

@@ -1,8 +1,26 @@
+# Ballerina Build Artifacts & Runtime
 .runtime/
-backend/src/target/
+target/
+**/target/
+*.jar
+*.bala
+Dependencies.toml.backup
+
+# Application Runtime Persistence (Do not commit sensitive operational state)
 backend/src/runtime-data/
-backend/src/Config.toml
+backend/src/runtime-test-data/
+backend/src/logs/
 *.log
+
+# Sensitive Configuration Secrets
+backend/src/Config.toml
 .env
 .env.*
 !.env.example
+
+# IDE & OS Artifacts
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
+*~

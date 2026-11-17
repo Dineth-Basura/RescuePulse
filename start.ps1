@@ -6,6 +6,24 @@ New-Item -ItemType Directory -Force -Path $runtimeDir | Out-Null
 $previousJavaOptions = $env:JAVA_TOOL_OPTIONS
 $env:JAVA_TOOL_OPTIONS = "$previousJavaOptions -Duser.home=$runtimeDir"
 $projectDir = Join-Path $PSScriptRoot "backend/src"
+$jarPath = Join-Path $projectDir "target/bin/backend.jar"
+# Windows does not allow Ballerina to overwrite the JAR while a java -jar process holds it.
+if (Test-Path -LiteralPath $jarPath) {
+    try {
+        $probe = [System.IO.File]::Open($jarPath, [System.IO.FileMode]::Open, [System.IO.FileAccess]::ReadWrite, [System.IO.FileShare]::None)
+        $probe.Dispose()
+    } catch [System.IO.IOException] {
+        $msg = "RescuePulse backend.jar is locked."
+        try {
+            $procs = Get-CimInstance Win32_Process -Filter "Name = 'java.exe'" -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -like "*backend.jar*" }
+            if ($procs) {
+                $pids = ($procs | ForEach-Object { $_.ProcessId }) -join ", "
+                $msg += " It is held by Java process ID $pids. Stop this process to continue."
+            }
+        } catch {}
+        throw "$msg Press Ctrl+C in the running backend terminal, or stop that RescuePulse process, then retry."
+    }
+}
 $manifestPath = Join-Path $projectDir "Ballerina.toml"
 $originalManifest = [IO.File]::ReadAllText($manifestPath)
 $dependencyPath = Join-Path $projectDir "Dependencies.toml"

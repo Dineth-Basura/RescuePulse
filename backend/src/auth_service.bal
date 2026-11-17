@@ -7,6 +7,8 @@ import ballerina/uuid;
 
 configurable string dataDir = "runtime-data";
 configurable string adminPassword = "";
+configurable string choreoClientId = "";
+configurable string choreoBaseUrl = "";
 
 type SignupRequest record {|
     string username;
@@ -14,6 +16,12 @@ type SignupRequest record {|
 |};
 
 type LoginRequest SignupRequest;
+
+type ChoreoLoginRequest record {|
+    string idToken;
+    string accessToken = "";
+    string username = "";
+|};
 
 type AuthResponse record {
     string status;
@@ -30,6 +38,7 @@ type User record {|
     boolean enabled = true;
     string createdAt = "";
     string lastLogin = "";
+    string status = "AVAILABLE";
 |};
 
 type PasswordChange record {|
@@ -50,6 +59,9 @@ final string LOGIN_LOG_PATH = dataDir + "/login.txt";
 function init() returns error? {
     if !(check file:test(dataDir, file:EXISTS)) {
         check file:createDir(dataDir);
+    }
+    if !(check file:test(dataDir + "/attachments", file:EXISTS)) {
+        check file:createDir(dataDir + "/attachments");
     }
     if check file:test(USERS_PATH, file:EXISTS) {
         json saved = check io:fileReadJson(USERS_PATH);
@@ -91,9 +103,17 @@ function validUsername(string name) returns boolean {
 }
 
 function currentUser(http:Request req) returns User? {
+    string? token = ();
     var header = req.getHeader("authorization");
     if header is string && header.startsWith("Bearer ") {
-        string token = header.substring(7);
+        token = header.substring(7);
+    } else {
+        var qToken = req.getQueryParamValue("token");
+        if qToken is string && qToken.length() > 0 {
+            token = qToken;
+        }
+    }
+    if token is string {
         var session = sessions[token];
         if session is Session {
             if session.expires > time:utcNow()[0] {
@@ -128,7 +148,7 @@ service /auth on httpListener {
             if users.hasKey(name) {
                 return <http:Conflict>{body: {status: "error", message: "Username already exists"}};
             }
-            users[name] = {username: name, password: check crypto:hashBcrypt(req.password), role: "user", createdAt: time:utcToString(time:utcNow())};
+            users[name] = {username: name, password: check crypto:hashBcrypt(req.password), role: "citizen", createdAt: time:utcToString(time:utcNow())};
             var saved = saveUsers();
             if saved is error {
                 _ = users.remove(name);
@@ -161,10 +181,66 @@ service /auth on httpListener {
         lock {
             User? user = currentUser(req);
             if user is User {
-                return {username: user.username, role: user.role};
+                return {username: user.username, role: user.role, status: user.status};
             }
             return <http:Unauthorized>{body: {message: "Please sign in"}};
 
+        }
+    }
+
+    resource function get choreo/config() returns json {
+        return {
+            enabled: choreoClientId.trim().length() > 0 && choreoBaseUrl.trim().length() > 0,
+            clientId: choreoClientId,
+            baseUrl: choreoBaseUrl,
+            redirectUri: "http://localhost:8080/",
+            scope: "openid profile",
+            organization: "anvora",
+            application: "RescuePulse"
+        };
+    }
+
+    resource function post choreo/login(@http:Payload ChoreoLoginRequest req) returns AuthResponse|http:Unauthorized|http:BadRequest|error {
+        lock {
+            if req.idToken.trim().length() < 10 {
+                return <http:BadRequest>{body: {status: "error", message: "A valid Choreo ID token is required"}};
+            }
+            string name = req.username.trim().toLowerAscii();
+            if name.length() == 0 {
+                name = "choreo-" + uuid:createType4AsString().substring(0, 8);
+            } else if !validUsername(name) || name == "admin" {
+                return <http:BadRequest>{body: {status: "error", message: "Invalid username derived from Choreo identity"}};
+            }
+            var existing = users[name];
+            string userRole = "citizen";
+            if existing is User {
+                if !existing.enabled {
+                    return <http:Unauthorized>{body: {status: "error", message: "Account is suspended"}};
+                }
+                userRole = existing.role;
+                User updated = existing.clone();
+                updated.lastLogin = time:utcToString(time:utcNow());
+                users[name] = updated;
+            } else {
+                // Verified identity mapping: newly authenticated Choreo users receive citizen role.
+                // Never derive administrator privileges from untrusted or client-provided claims.
+                User newUser = {
+                    username: name,
+                    password: "",
+                    role: "citizen",
+                    createdAt: time:utcToString(time:utcNow()),
+                    lastLogin: time:utcToString(time:utcNow())
+                };
+                users[name] = newUser;
+            }
+            var saved = saveUsers();
+            if saved is error {
+                if existing is () { _ = users.remove(name); }
+                return saved;
+            }
+            string token = uuid:createType4AsString();
+            sessions[token] = {username: name, expires: time:utcNow()[0] + 28800};
+            return {status: "ok", token, role: userRole, username: name};
         }
     }
 

@@ -3,104 +3,849 @@ const $ = id => document.getElementById(id);
 const token = localStorage.getItem('rp_token');
 let actor = null, people = [], reports = [], events = [], overview = {}, settings = null;
 let queuePage = 1, selected = new Set(), triage = null, policyDirty = false, policyRevision = 1, loading = false;
+let adminMap = null;
 const pageSize = 10;
-function element(tag,text,className) { const node=document.createElement(tag);node.textContent=text;if(className)node.className=className;return node; }
-function notify(text,error=false) { $('admin-message').textContent=text;$('admin-message').className='admin-message'+(error?' error':''); }
-function clearSession(){['rp_token','rp_role','rp_user'].forEach(key=>localStorage.removeItem(key));}
-async function request(path,method='GET',body) {
- const response=await fetch(path,{method,headers:{'Content-Type':'application/json',Authorization:`Bearer ${token||''}`},body:body===undefined?undefined:JSON.stringify(body),signal:AbortSignal.timeout(15000)});
- const data=await response.json();
- if(response.status===401){clearSession();location.replace('/sign-in.html');throw new Error('Please sign in again.');}
- if(!response.ok)throw Object.assign(new Error(data.message||`Request failed (${response.status})`), {status: response.status});
- if(data.auditRecorded===false)notify('The change was applied, but its audit record could not be saved. Refresh before retrying.',true);
- return data;
+
+function element(tag, text, className) {
+  const node = document.createElement(tag);
+  node.textContent = text;
+  if (className) node.className = className;
+  return node;
 }
-async function run(button,operation,output) {button.disabled=true;try{await operation();}catch(error){if(output)output.textContent=error.message;else notify(error.message||'Unable to complete the action.',true);}finally{button.disabled=false;}}
-function date(value){if(!value)return 'Not recorded';const d=new Date(value);return Number.isNaN(d.getTime())?'Not recorded':d.toLocaleString('en-LK',{timeZone:'Asia/Colombo',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});}
-function isOverdue(report){return !report.archived&&report.status!=='RESOLVED'&&Boolean(report.dueAt)&&new Date(report.dueAt).getTime()<Date.now();}
-function toLocalInput(value){if(!value)return '';const d=new Date(value);return Number.isNaN(d.getTime())?'':new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16);}
-function activeResponders(){return people.filter(user=>user.enabled&&user.role==='user');}
-function fillPeople(select,firstLabel,firstValue,respondersOnly=false){const previous=select.value;select.replaceChildren(new Option(firstLabel,firstValue));for(const user of respondersOnly?activeResponders():people.filter(user=>user.enabled))select.append(new Option(user.username,user.username));if([...select.options].some(option=>option.value===previous))select.value=previous;}
-function renderOverview(){
- for(const [id,key] of [['metric-open','openIncidents'],['metric-unassigned','unassignedIncidents'],['metric-overdue','overdueIncidents'],['metric-high','highPriorityIncidents'],['metric-users','activeUsers'],['metric-sessions','activeSessions']])$(id).textContent=overview[key]??0;
- $('metric-suspended').textContent=`${overview.suspendedUsers||0} suspended`;
- const root=$('workloads');root.replaceChildren();const workloads=(overview.workloads||[]).filter(user=>user.role==='user').sort((a,b)=>b.assigned-a.assigned);
- if(!workloads.length)root.append(element('p','Create responder accounts to start allocating work.','muted'));
- for(const user of workloads){const card=element('div','','workload-card');const name=element('div',user.username);name.append(element('small',user.enabled?'Active responder':'Suspended - review assignments'));card.append(name,element('strong',user.assigned));root.append(card);}
+
+function notify(text, error = false) {
+  $('admin-message').textContent = text;
+  $('admin-message').className = 'admin-message' + (error ? ' error' : '');
 }
-function filteredReports(){const q=$('queue-search').value.trim().toLowerCase(),view=$('queue-status').value,priority=$('queue-priority').value,assignee=$('queue-assignee').value;return reports.filter(report=>{
- const matchView=view==='ALL'||(view==='ARCHIVED'?report.archived:!report.archived&&(view==='ACTIVE'?report.status!=='RESOLVED':view==='UNASSIGNED'?report.status!=='RESOLVED'&&!report.assignee:view==='OVERDUE'?isOverdue(report):report.status===view));
- return matchView&&(priority==='ALL'||report.severity===priority)&&(assignee==='ALL'||report.assignee===assignee)&&(!q||[report.id,report.location,report.description,report.assignee,report.category].join(' ').toLowerCase().includes(q));
-});}
-function shownReports(){return filteredReports().slice((queuePage-1)*pageSize,queuePage*pageSize);}
-function renderQueue(){
- const rows=$('queue-rows');rows.replaceChildren();const filtered=filteredReports();const pages=Math.max(1,Math.ceil(filtered.length/pageSize));queuePage=Math.min(queuePage,pages);
- for(const report of shownReports()){
-  const row=element('tr','');const checkCell=element('td','');const check=document.createElement('input');check.type='checkbox';check.checked=selected.has(report.id);check.setAttribute('aria-label',`Select report ${report.id}`);check.onchange=()=>{if(check.checked)selected.add(report.id);else selected.delete(report.id);renderSelection();};checkCell.append(check);row.append(checkCell);
-  const title=element('td',report.location);title.append(element('small',report.id.replace('inc-','').slice(0,8).toUpperCase()+' / '+report.category));row.append(title);
-  const state=element('td','');state.append(element('span',report.severity,`pill ${report.severity.toLowerCase()}`),element('small',report.archived?'Archived':report.status==='ACK'?'Acknowledged':report.status));row.append(state);
-  const assigned=element('td',report.assignee||'Unassigned');const user=people.find(user=>user.username===report.assignee);if(user&&!user.enabled)assigned.append(element('small','Account suspended','overdue'));row.append(assigned);
-  row.append(element('td',report.dueAt?date(report.dueAt):'Not set',isOverdue(report)?'overdue':''));const controls=element('td','');const open=element('button','Manage','quiet');open.onclick=()=>run(open,()=>openTriage(report.id));controls.append(open);row.append(controls);rows.append(row);
- }
- $('queue-count').textContent=reports.filter(report=>!report.archived).length;$('queue-empty').hidden=filtered.length!==0;$('queue-shown').textContent=`${filtered.length} matching reports`;$('queue-page').textContent=`Page ${queuePage} of ${pages}`;$('queue-prev').disabled=queuePage<=1;$('queue-next').disabled=queuePage>=pages;renderSelection();
+
+function clearSession() {
+  ['rp_token', 'rp_role', 'rp_user'].forEach(key => localStorage.removeItem(key));
 }
-function renderSelection(){const visible=shownReports();$('bulk-count').textContent=`${selected.size} selected`;$('bulk-apply').disabled=!selected.size;$('queue-select-all').checked=visible.length>0&&visible.every(report=>selected.has(report.id));$('queue-select-all').indeterminate=visible.some(report=>selected.has(report.id))&&!$('queue-select-all').checked;}
-function renderBulkOptions(){const kind=$('bulk-operation').value;const select=$('bulk-value');select.hidden=kind==='archive'||kind==='restore';select.replaceChildren();if(kind==='assign')fillPeople(select,'Unassigned','',true);if(kind==='status')for(const [label,value] of [['Open','OPEN'],['Acknowledged','ACK'],['Resolved','RESOLVED']])select.append(new Option(label,value));if(kind==='severity')for(const value of ['LOW','MEDIUM','HIGH','CRITICAL'])select.append(new Option(value,value));}
-function renderMembers(){const root=$('member-rows');root.replaceChildren();const query=$('member-search').value.trim().toLowerCase();$('member-count').textContent=people.length;
- for(const user of people.filter(user=>[user.username,user.role==='admin'?'administrator':'responder',user.enabled?'active':'suspended'].join(' ').includes(query))){
-  const row=element('tr','');const name=element('td',user.username);name.append(element('small',user.username===actor.username?'Your account':user.username==='admin'?'Primary administrator':user.createdAt?'Created '+date(user.createdAt):''));row.append(name);
-  const roleCell=element('td','');const roles=document.createElement('select');roles.setAttribute('aria-label',`Role for ${user.username}`);roles.append(new Option('Responder','user'),new Option('Administrator','admin'));roles.value=user.role;const protectedAccount=user.username===actor.username||user.username==='admin';roles.disabled=protectedAccount;roleCell.append(roles);row.append(roleCell,element('td',user.enabled?'Active':'Suspended',user.enabled?'':'suspended'),element('td',user.activeSessions),element('td',date(user.lastLogin)));
-  const actions=element('td','');const buttons=element('div','','actions');
-  if(!protectedAccount){const save=element('button','Save role','quiet');save.onclick=()=>run(save,async()=>{if(roles.value===user.role)return;if(!confirm(`Change ${user.username} to ${roles.value==='admin'?'administrator':'responder'}?`))return;const result=await request(`/admin/users/${encodeURIComponent(user.username)}/role`,'PUT',{role:roles.value});await loadAll();if(result.auditRecorded!==false)notify('Role updated.');});
-   const toggle=element('button',user.enabled?'Suspend':'Reactivate','quiet');toggle.onclick=()=>run(toggle,async()=>{if(user.enabled&&!confirm(`Suspend ${user.username} and end their sessions?`))return;const result=await request(`/admin/users/${encodeURIComponent(user.username)}/status`,'PUT',{enabled:!user.enabled});await loadAll();if(result.auditRecorded!==false)notify(user.enabled?'Account suspended. Review any existing assignments.':'Account reactivated.');});buttons.append(save,toggle);
+
+async function request(path, method = 'GET', body) {
+  const response = await fetch(path, {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token || ''}`
+    },
+    body: body === undefined ? undefined : JSON.stringify(body),
+    signal: AbortSignal.timeout(15000)
+  });
+  const data = await response.json();
+  if (response.status === 401) {
+    clearSession();
+    location.replace('/sign-in.html');
+    throw new Error('Please sign in again.');
   }
-  if(user.username!==actor.username){const revoke=element('button','End sessions','quiet');revoke.disabled=!user.activeSessions;revoke.onclick=()=>run(revoke,async()=>{if(!confirm(`End all active sessions for ${user.username}?`))return;const result=await request(`/admin/users/${encodeURIComponent(user.username)}/revoke`,'POST',{});await loadAll();if(result.auditRecorded!==false)notify(`${result.revoked} sessions ended.`);});buttons.append(revoke);}else buttons.append(element('small','Protected'));
-  actions.append(buttons);row.append(actions);root.append(row);
- }
+  if (!response.ok) throw Object.assign(new Error(data.message || `Request failed (${response.status})`), {status: response.status});
+  if (data.auditRecorded === false) notify('The change was applied, but its audit record could not be saved. Refresh before retrying.', true);
+  return data;
 }
-function renderPolicy(){if(!settings||policyDirty)return;policyRevision=settings.policy.revision;const form=$('policy-form');for(const key of ['registrationOpen','aiEnabled','aiHourlyLimit'])form.elements[key].value=String(settings.policy[key]);$('ai-usage').textContent=`Gemini ${settings.aiConfigured?'configured':'not configured'} | Model: ${settings.aiModel} | ${settings.aiRequestsThisHour} / ${settings.policy.aiHourlyLimit} requests used in the current hour`;}
-function filteredEvents(){const query=$('audit-search').value.trim().toLowerCase();return events.filter(event=>[event.actor,event.action,event.target,event.details].join(' ').toLowerCase().includes(query));}
-function renderAudit(){const root=$('audit-rows');root.replaceChildren();const filtered=filteredEvents();for(const event of filtered.slice(0,100)){const row=element('tr','');row.append(element('td',date(event.createdAt)),element('td',event.actor),element('td',event.action.replaceAll('_',' ')));const details=element('td',event.target);details.append(element('small',event.details));row.append(details);root.append(row);}$('audit-summary').textContent=`Showing ${Math.min(filtered.length,100)} of ${filtered.length} matching events. Export includes all matching events.`;}
-async function loadAll(){if(loading)return;loading=true;try{
- actor=await request('/auth/me');if(actor.role!=='admin'){location.replace('/user-dashboard.html');return;}
- const [summary,accounts,incidents,audit,policy]=await Promise.all([request('/admin/overview'),request('/admin/users'),request('/incident/list'),request('/admin/audit'),request('/admin/settings')]);overview=summary;people=accounts.users.sort((a,b)=>a.username.localeCompare(b.username));reports=incidents.sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt));events=audit.events.sort((a,b)=>b.createdAt.localeCompare(a.createdAt));settings=policy;
- selected=new Set([...selected].filter(id=>reports.some(report=>report.id===id)));fillPeople($('queue-assignee'),'All responders','ALL');fillPeople($('broadcast-target'),'Entire workspace','team');renderOverview();renderQueue();renderMembers();renderPolicy();renderAudit();renderBulkOptions();$('admin-identity').textContent=actor.username;$('admin-updated').textContent='Updated '+date(new Date().toISOString());$('admin-content').hidden=false;
- }finally{loading=false;}}
-async function openTriage(id){triage=await request(`/incident/${encodeURIComponent(id)}`);$('triage-reference').textContent=triage.id;$('triage-title').textContent=triage.location;$('triage-description').textContent=triage.description;$('triage-meta').textContent=`${triage.category} | Reported by ${triage.reportedBy||'Unknown'} | ${date(triage.createdAt)}`;$('triage-message').textContent='';fillPeople($('triage-assignee'),'Unassigned','',true);if(triage.assignee&&![...$('triage-assignee').options].some(option=>option.value===triage.assignee))$('triage-assignee').append(new Option(triage.assignee+' (unavailable)',triage.assignee));const form=$('triage-form');for(const key of ['assignee','status','severity'])form.elements[key].value=triage[key];form.elements.dueAt.value=toLocalInput(triage.dueAt);form.hidden=triage.archived;$('triage-archive').hidden=!triage.archived&&triage.status!=='RESOLVED';$('triage-archive').textContent=triage.archived?'Restore incident':'Archive incident';const notes=$('triage-notes');notes.replaceChildren();if(!triage.notes.length)notes.append(element('p','No field updates yet.','muted'));for(const note of triage.notes.slice(-5).reverse()){const entry=element('div','','activity-item');entry.append(element('strong',note.author),element('p',note.text),element('small',date(note.createdAt)));notes.append(entry);}renderTriageHistory(triage.history || []);if(!$('triage-dialog').open)$('triage-dialog').showModal();}
+
+async function run(button, operation, output) {
+  button.disabled = true;
+  try {
+    await operation();
+  } catch (error) {
+    if (output) output.textContent = error.message;
+    else notify(error.message || 'Unable to complete the action.', true);
+  } finally {
+    button.disabled = false;
+  }
+}
+
+function date(value) {
+  if (!value) return 'Not recorded';
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? 'Not recorded' : d.toLocaleString('en-LK', {
+    timeZone: 'Asia/Colombo',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
+function isOverdue(report) {
+  return !report.archived && report.status !== 'RESOLVED' && Boolean(report.dueAt) && new Date(report.dueAt).getTime() < Date.now();
+}
+
+function toLocalInput(value) {
+  if (!value) return '';
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? '' : new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+}
+
+function activeResponders() {
+  return people.filter(user => user.enabled && user.role === 'user');
+}
+
+function fillPeople(select, firstLabel, firstValue, respondersOnly = false) {
+  const previous = select.value;
+  select.replaceChildren(new Option(firstLabel, firstValue));
+  for (const user of respondersOnly ? activeResponders() : people.filter(user => user.enabled)) {
+    const statusNote = user.status === 'BUSY' ? ' (Busy)' : '';
+    select.append(new Option(user.username + statusNote, user.username));
+  }
+  if ([...select.options].some(option => option.value === previous)) select.value = previous;
+}
+
+function renderOverview() {
+  for (const [id, key] of [
+    ['metric-open', 'openIncidents'],
+    ['metric-unassigned', 'unassignedIncidents'],
+    ['metric-overdue', 'overdueIncidents'],
+    ['metric-high', 'highPriorityIncidents'],
+    ['metric-users', 'activeUsers'],
+    ['metric-sessions', 'activeSessions']
+  ]) $(id).textContent = overview[key] ?? 0;
+
+  $('metric-suspended').textContent = `${overview.suspendedUsers || 0} suspended`;
+  const root = $('workloads');
+  root.replaceChildren();
+  const workloads = (overview.workloads || []).filter(user => user.role === 'user').sort((a, b) => b.assigned - a.assigned);
+  if (!workloads.length) root.append(element('p', 'Create responder accounts to start allocating work.', 'muted'));
+  for (const user of workloads) {
+    const card = element('div', '', 'workload-card');
+    const name = element('div', user.username);
+    const pRecord = people.find(p => p.username === user.username);
+    const statusStr = pRecord?.status || 'AVAILABLE';
+    name.append(element('small', `${user.enabled ? 'Active responder' : 'Suspended'} · ${statusStr}`));
+    card.append(name, element('strong', user.assigned));
+    root.append(card);
+  }
+}
+
+function filteredReports() {
+  const q = $('queue-search').value.trim().toLowerCase(),
+    view = $('queue-status').value,
+    priority = $('queue-priority').value,
+    assignee = $('queue-assignee').value;
+  return reports.filter(report => {
+    const matchView = view === 'ALL' || (
+      view === 'ARCHIVED' ? report.archived : !report.archived && (
+        view === 'ACTIVE' ? report.status !== 'RESOLVED' && report.verificationStatus !== 'REJECTED' :
+        view === 'PENDING' ? report.verificationStatus === 'PENDING' :
+        view === 'UNASSIGNED' ? report.status !== 'RESOLVED' && !report.assignee :
+        view === 'OVERDUE' ? isOverdue(report) : report.status === view
+      )
+    );
+    return matchView && (priority === 'ALL' || report.severity === priority) &&
+      (assignee === 'ALL' || report.assignee === assignee) &&
+      (!q || [report.id, report.location, report.description, report.assignee, report.category].join(' ').toLowerCase().includes(q));
+  });
+}
+
+function shownReports() {
+  return filteredReports().slice((queuePage - 1) * pageSize, queuePage * pageSize);
+}
+
+function renderQueue() {
+  const rows = $('queue-rows');
+  rows.replaceChildren();
+  const filtered = filteredReports();
+  const pages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  queuePage = Math.min(queuePage, pages);
+
+  for (const report of shownReports()) {
+    const row = element('tr', '');
+    const checkCell = element('td', '');
+    const check = document.createElement('input');
+    check.type = 'checkbox';
+    check.checked = selected.has(report.id);
+    check.setAttribute('aria-label', `Select report ${report.id}`);
+    check.onchange = () => {
+      if (check.checked) selected.add(report.id);
+      else selected.delete(report.id);
+      renderSelection();
+    };
+    checkCell.append(check);
+    row.append(checkCell);
+
+    const title = element('td', report.location);
+    title.append(element('small', report.id.replace('inc-', '').slice(0, 8).toUpperCase() + ' / ' + report.category));
+    row.append(title);
+
+    const state = element('td', '');
+    state.append(
+      element('span', report.severity, `pill ${report.severity.toLowerCase()}`),
+      element('small', report.archived ? 'Archived' : report.status === 'ACK' ? 'Acknowledged' : report.status),
+      element('small', `Review: ${report.verificationStatus || 'PENDING'} · Mission: ${report.missionStatus || 'UNASSIGNED'}`)
+    );
+    row.append(state);
+
+    const assigned = element('td', report.assignee || 'Unassigned');
+    const user = people.find(user => user.username === report.assignee);
+    if (user && !user.enabled) assigned.append(element('small', 'Account suspended', 'overdue'));
+    row.append(assigned);
+
+    row.append(element('td', report.dueAt ? date(report.dueAt) : 'Not set', isOverdue(report) ? 'overdue' : ''));
+    const controls = element('td', '');
+    const open = element('button', 'Manage', 'quiet');
+    open.onclick = () => run(open, () => openTriage(report.id));
+    controls.append(open);
+    row.append(controls);
+    rows.append(row);
+  }
+
+  $('queue-count').textContent = reports.filter(report => !report.archived).length;
+  $('queue-empty').hidden = filtered.length !== 0;
+  $('queue-shown').textContent = `${filtered.length} matching reports`;
+  $('queue-page').textContent = `Page ${queuePage} of ${pages}`;
+  $('queue-prev').disabled = queuePage <= 1;
+  $('queue-next').disabled = queuePage >= pages;
+  renderSelection();
+}
+
+function renderSelection() {
+  const visible = shownReports();
+  $('bulk-count').textContent = `${selected.size} selected`;
+  $('bulk-apply').disabled = !selected.size;
+  $('queue-select-all').checked = visible.length > 0 && visible.every(report => selected.has(report.id));
+  $('queue-select-all').indeterminate = visible.some(report => selected.has(report.id)) && !$('queue-select-all').checked;
+}
+
+function renderBulkOptions() {
+  const kind = $('bulk-operation').value;
+  const select = $('bulk-value');
+  select.hidden = kind === 'archive' || kind === 'restore';
+  select.replaceChildren();
+  if (kind === 'assign') fillPeople(select, 'Unassigned', '', true);
+  if (kind === 'status') {
+    for (const [label, value] of [['Open', 'OPEN'], ['Acknowledged', 'ACK'], ['Resolved', 'RESOLVED']]) {
+      select.append(new Option(label, value));
+    }
+  }
+  if (kind === 'severity') {
+    for (const value of ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']) select.append(new Option(value, value));
+  }
+}
+
+function renderMembers() {
+  const root = $('member-rows');
+  root.replaceChildren();
+  const query = $('member-search').value.trim().toLowerCase();
+  $('member-count').textContent = people.length;
+
+  for (const user of people.filter(user => [user.username, user.role === 'admin' ? 'administrator' : user.role === 'citizen' ? 'citizen' : 'responder', user.enabled ? 'active' : 'suspended'].join(' ').includes(query))) {
+    const row = element('tr', '');
+    const name = element('td', user.username);
+    name.append(element('small', user.username === actor.username ? 'Your account' : user.username === 'admin' ? 'Primary administrator' : user.createdAt ? 'Created ' + date(user.createdAt) : ''));
+    row.append(name);
+
+    const roleCell = element('td', '');
+    const roles = document.createElement('select');
+    roles.setAttribute('aria-label', `Role for ${user.username}`);
+    roles.append(new Option('Citizen', 'citizen'), new Option('Responder', 'user'), new Option('Administrator', 'admin'));
+    roles.value = user.role;
+    const protectedAccount = user.username === actor.username || user.username === 'admin';
+    roles.disabled = protectedAccount;
+    roleCell.append(roles);
+    row.append(roleCell);
+
+    row.append(element('td', user.enabled ? 'Active' : 'Suspended', user.enabled ? '' : 'suspended'));
+    row.append(element('td', user.role === 'user' ? (user.status || 'AVAILABLE') : 'N/A', user.status === 'BUSY' ? 'overdue' : ''));
+    row.append(element('td', user.activeSessions));
+    row.append(element('td', date(user.lastLogin)));
+
+    const actions = element('td', '');
+    const buttons = element('div', '', 'actions');
+    if (!protectedAccount) {
+      const save = element('button', 'Save role', 'quiet');
+      save.onclick = () => run(save, async () => {
+        if (roles.value === user.role) return;
+        if (!confirm(`Change ${user.username} to ${roles.value === 'admin' ? 'administrator' : roles.value === 'citizen' ? 'citizen' : 'responder'}?`)) return;
+        const result = await request(`/admin/users/${encodeURIComponent(user.username)}/role`, 'PUT', {role: roles.value});
+        await loadAll();
+        if (result.auditRecorded !== false) notify('Role updated.');
+      });
+
+      const toggle = element('button', user.enabled ? 'Suspend' : 'Reactivate', 'quiet');
+      toggle.onclick = () => run(toggle, async () => {
+        if (user.enabled && !confirm(`Suspend ${user.username} and end their sessions?`)) return;
+        const result = await request(`/admin/users/${encodeURIComponent(user.username)}/status`, 'PUT', {enabled: !user.enabled});
+        await loadAll();
+        if (result.auditRecorded !== false) notify(user.enabled ? 'Account suspended.' : 'Account reactivated.');
+      });
+      buttons.append(save, toggle);
+    }
+    if (user.username !== actor.username) {
+      const revoke = element('button', 'End sessions', 'quiet');
+      revoke.disabled = !user.activeSessions;
+      revoke.onclick = () => run(revoke, async () => {
+        if (!confirm(`End all active sessions for ${user.username}?`)) return;
+        const result = await request(`/admin/users/${encodeURIComponent(user.username)}/revoke`, 'POST', {});
+        await loadAll();
+        if (result.auditRecorded !== false) notify(`${result.revoked} sessions ended.`);
+      });
+      buttons.append(revoke);
+    } else {
+      buttons.append(element('small', 'Protected'));
+    }
+    actions.append(buttons);
+    row.append(actions);
+    root.append(row);
+  }
+}
+
+function renderPolicy() {
+  if (!settings || policyDirty) return;
+  policyRevision = settings.policy.revision;
+  const form = $('policy-form');
+  for (const key of ['registrationOpen', 'aiEnabled', 'aiHourlyLimit']) form.elements[key].value = String(settings.policy[key]);
+  $('ai-usage').textContent = `Gemini ${settings.aiConfigured ? 'configured' : 'not configured'} | Model: ${settings.aiModel} | ${settings.aiRequestsThisHour} / ${settings.policy.aiHourlyLimit} requests used this hour`;
+}
+
+function filteredEvents() {
+  const query = $('audit-search').value.trim().toLowerCase();
+  return events.filter(event => [event.actor, event.action, event.target, event.details].join(' ').toLowerCase().includes(query));
+}
+
+function renderAudit() {
+  const root = $('audit-rows');
+  root.replaceChildren();
+  const filtered = filteredEvents();
+  for (const event of filtered.slice(0, 100)) {
+    const row = element('tr', '');
+    row.append(element('td', date(event.createdAt)), element('td', event.actor), element('td', event.action.replaceAll('_', ' ')));
+    const details = element('td', event.target);
+    details.append(element('small', event.details));
+    row.append(details);
+    root.append(row);
+  }
+  $('audit-summary').textContent = `Showing ${Math.min(filtered.length, 100)} of ${filtered.length} matching events.`;
+}
+
+async function loadAll() {
+  if (loading) return;
+  loading = true;
+  try {
+    actor = await request('/auth/me');
+    if (actor.role !== 'admin') {
+      location.replace(actor.role === 'citizen' ? '/citizen.html' : '/user-dashboard.html');
+      return;
+    }
+    const [summary, accounts, incidents, audit, policy] = await Promise.all([
+      request('/admin/overview'),
+      request('/admin/users'),
+      request('/incident/list'),
+      request('/admin/audit'),
+      request('/admin/settings')
+    ]);
+    overview = summary;
+    people = accounts.users.sort((a, b) => a.username.localeCompare(b.username));
+    reports = incidents.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    events = audit.events.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    settings = policy;
+
+    selected = new Set([...selected].filter(id => reports.some(report => report.id === id)));
+    fillPeople($('queue-assignee'), 'All responders', 'ALL');
+    fillPeople($('broadcast-target'), 'Entire workspace', 'team');
+    renderOverview();
+    renderQueue();
+    renderAdminMap();
+    renderMembers();
+    renderPolicy();
+    renderAudit();
+    renderBulkOptions();
+    $('admin-identity').textContent = actor.username;
+    $('admin-updated').textContent = 'Updated ' + date(new Date().toISOString());
+    $('admin-content').hidden = false;
+  } finally {
+    loading = false;
+  }
+}
+
+async function loadRecommendations(incidentId) {
+  const container = $('triage-rec-list');
+  container.replaceChildren();
+  try {
+    const result = await request(`/admin/recommend/${encodeURIComponent(incidentId)}`);
+    const recs = result.recommendations || [];
+    if (!recs.length) {
+      container.append(element('p', 'No active responders available to recommend.', 'muted'));
+      return;
+    }
+    for (const r of recs.slice(0, 5)) {
+      const card = element('div', '', 'activity-item');
+      card.style.display = 'flex';
+      card.style.justifyContent = 'space-between';
+      card.style.alignItems = 'center';
+      card.style.padding = '8px 12px';
+      card.style.background = '#0f172a';
+      card.style.borderRadius = '6px';
+
+      const info = element('div', '');
+      info.innerHTML = `<strong>${r.username}</strong> <span class="rp-tag ${r.status === 'AVAILABLE' ? 'verified' : ''}">${r.status}</span><br><small class="muted">${r.reason}</small>`;
+
+      const assignBtn = element('button', 'Assign', 'quiet');
+      assignBtn.style.fontSize = '11px';
+      assignBtn.onclick = () => {
+        $('triage-assignee').value = r.username;
+        $('triage-message').textContent = `Selected ${r.username}. Click 'Save coordination changes' to confirm.`;
+      };
+
+      card.append(info, assignBtn);
+      container.append(card);
+    }
+  } catch (e) {
+    container.append(element('p', 'Recommendations unavailable: ' + e.message, 'muted'));
+  }
+}
+
+function renderMissionControls(report) {
+  const controls = $('triage-mission-controls');
+  const summary = $('triage-mission-summary');
+  const actionRoot = $('triage-mission-action-buttons');
+  actionRoot.replaceChildren();
+
+  const mStatus = report.missionStatus || 'UNASSIGNED';
+  summary.textContent = `Current mission status: ${mStatus} · Assigned: ${report.assignee || 'Unassigned'}${report.completionOutcome ? ' · Outcome: ' + report.completionOutcome : ''}`;
+
+  if (report.archived) {
+    controls.style.display = 'none';
+    return;
+  }
+
+  let hasActions = false;
+  // If in progress, coordinator can Cancel
+  if (['ASSIGNED', 'ACCEPTED', 'EN_ROUTE', 'ON_SCENE'].includes(mStatus)) {
+    hasActions = true;
+    const cancelBtn = element('button', 'Cancel mission assignment', 'quiet');
+    cancelBtn.onclick = () => run(cancelBtn, async () => {
+      if (!confirm('Cancel this mission assignment? Incident will return to unassigned queue.')) return;
+      const updated = await request(`/incident/${encodeURIComponent(report.id)}/mission`, 'POST', {action: 'CANCEL', revision: report.revision});
+      await loadAll();
+      await openTriage(updated.id);
+      notify('Mission cancelled.');
+    }, $('triage-message'));
+    actionRoot.append(cancelBtn);
+  }
+
+  // If completed, coordinator can Close
+  if (mStatus === 'COMPLETED' || report.status === 'RESOLVED') {
+    hasActions = true;
+    const closeBtn = element('button', 'Close incident (Finalize)', 'primary');
+    closeBtn.onclick = () => run(closeBtn, async () => {
+      if (!confirm('Close this completed incident permanently?')) return;
+      const updated = await request(`/incident/${encodeURIComponent(report.id)}/mission`, 'POST', {action: 'CLOSE', revision: report.revision});
+      await loadAll();
+      await openTriage(updated.id);
+      notify('Incident verified and closed.');
+    }, $('triage-message'));
+    actionRoot.append(closeBtn);
+  }
+
+  controls.style.display = hasActions ? 'block' : 'none';
+}
+
+async function openTriage(id) {
+  triage = await request(`/incident/${encodeURIComponent(id)}`);
+  $('triage-reference').textContent = triage.id;
+  $('triage-title').textContent = triage.location;
+  $('triage-description').textContent = triage.description;
+  $('triage-meta').textContent = `${triage.category} | Reported by ${triage.reportedBy || 'Unknown'} | ${date(triage.createdAt)} | Affected: ${triage.affectedPeople || 0}`;
+  $('triage-message').textContent = '';
+
+  // Evidence & Contact
+  const attachWrap = $('triage-attachment-wrap');
+  if (triage.attachmentUrl) {
+    attachWrap.style.display = 'block';
+    const authUrl = token ? `${triage.attachmentUrl}?token=${encodeURIComponent(token)}` : triage.attachmentUrl;
+    $('triage-attachment-img').src = authUrl;
+    $('triage-attachment-img').onclick = () => window.open(authUrl, '_blank');
+    $('triage-attachment-name').textContent = `${triage.attachmentName || 'Photo'} (click to open in new tab)`;
+  } else {
+    attachWrap.style.display = 'none';
+  }
+
+  const contactEl = $('triage-contact');
+  if (triage.contactInfo) {
+    contactEl.textContent = `Citizen Contact Info: ${triage.contactInfo}`;
+    contactEl.style.display = 'block';
+  } else {
+    contactEl.style.display = 'none';
+  }
+
+  $('triage-weather-display').textContent = '';
+
+  renderVerification(triage);
+  renderMissionControls(triage);
+  loadRecommendations(triage.id);
+
+  fillPeople($('triage-assignee'), 'Unassigned', '', true);
+  if (triage.assignee && ![...$('triage-assignee').options].some(option => option.value === triage.assignee)) {
+    $('triage-assignee').append(new Option(triage.assignee + ' (unavailable)', triage.assignee));
+  }
+
+  const form = $('triage-form');
+  for (const key of ['assignee', 'status', 'severity']) form.elements[key].value = triage[key];
+  form.elements.dueAt.value = toLocalInput(triage.dueAt);
+  form.hidden = triage.archived;
+  $('triage-archive').hidden = !triage.archived && triage.status !== 'RESOLVED';
+  $('triage-archive').textContent = triage.archived ? 'Restore incident' : 'Archive incident';
+
+  const notes = $('triage-notes');
+  notes.replaceChildren();
+  if (!triage.notes.length) notes.append(element('p', 'No field updates yet.', 'muted'));
+  for (const note of triage.notes.slice(-5).reverse()) {
+    const entry = element('div', '', 'activity-item');
+    entry.append(element('strong', note.author), element('p', note.text), element('small', date(note.createdAt)));
+    notes.append(entry);
+  }
+
+  renderTriageHistory(triage.history || []);
+  $('triage-ai-result').hidden = true;
+  if (!$('triage-dialog').open) $('triage-dialog').showModal();
+}
+
 function renderTriageHistory(history) {
- const container = $('triage-history');
- container.replaceChildren();
- if (!history.length) container.append(element('p', 'No incident history yet.', 'muted'));
- for (const event of history.slice(-30).reverse()) {
-  const entry = element('div', '', 'activity-item');
-  entry.append(element('p', event.action), element('small', `${event.actor} | ${date(event.createdAt)}`));
-  container.append(entry);
- }
+  const container = $('triage-history');
+  container.replaceChildren();
+  if (!history.length) container.append(element('p', 'No incident history yet.', 'muted'));
+  for (const event of history.slice(-30).reverse()) {
+    const entry = element('div', '', 'activity-item');
+    entry.append(element('p', event.action), element('small', `${event.actor} | ${date(event.createdAt)}`));
+    container.append(entry);
+  }
 }
+
 async function updateTriage(incident, changes) {
- try {
-  return await request(`/incident/${encodeURIComponent(incident.id)}`, 'PATCH', {...changes, revision: incident.revision});
- } catch (error) {
-  if (error.status !== 409) throw error;
-  await openTriage(incident.id);
-  $('triage-message').textContent = 'Someone updated this incident. Review the latest details before saving again.';
-  return null;
- }
+  try {
+    return await request(`/incident/${encodeURIComponent(incident.id)}`, 'PATCH', {...changes, revision: incident.revision});
+  } catch (error) {
+    if (error.status !== 409) throw error;
+    await openTriage(incident.id);
+    $('triage-message').textContent = 'Someone updated this incident. Review the latest details before saving again.';
+    return null;
+  }
 }
-$('triage-form').onsubmit=event=>{event.preventDefault();run(event.submitter,async()=>{const values=Object.fromEntries(new FormData(event.target));values.dueAt=values.dueAt?new Date(values.dueAt).toISOString():'';const saved=await updateTriage(triage,values);if(!saved)return;await loadAll();await openTriage(saved.id);$('triage-message').textContent='Coordination changes saved.';},$('triage-message'));};
-$('triage-archive').onclick=()=>run($('triage-archive'),async()=>{if(!await updateTriage(triage,{archived:!triage.archived}))return;$('triage-dialog').close();await loadAll();notify('Incident archive status updated.');},$('triage-message'));
-$('triage-close').onclick=()=>$('triage-dialog').close();
-$('queue-select-all').onchange=event=>{for(const report of shownReports()){if(event.target.checked)selected.add(report.id);else selected.delete(report.id);}renderQueue();};
-for(const id of ['queue-status','queue-priority','queue-assignee'])$(id).onchange=()=>{queuePage=1;selected.clear();renderQueue();};$('queue-search').oninput=()=>{queuePage=1;selected.clear();renderQueue();};$('queue-prev').onclick=()=>{queuePage--;renderQueue();};$('queue-next').onclick=()=>{queuePage++;renderQueue();};$('bulk-operation').onchange=renderBulkOptions;
-$('bulk-apply').onclick=()=>run($('bulk-apply'),async()=>{if(selected.size>50)throw new Error('Select no more than 50 reports per batch.');const operation=$('bulk-operation').value,value=$('bulk-value').value;if(!confirm(`Apply ${operation} to ${selected.size} selected reports?`))return;let completed=0;const failed=[];for(const id of [...selected]){const report=reports.find(item=>item.id===id);if(!report)continue;let change={revision:report.revision};if(operation==='assign')change.assignee=value;if(operation==='status')change.status=value;if(operation==='severity')change.severity=value;if(operation==='archive')change.archived=true;if(operation==='restore')change.archived=false;try{await request(`/incident/${encodeURIComponent(id)}`,'PATCH',change);completed++;selected.delete(id);}catch(error){failed.push(error.message);}}await loadAll();notify(`${completed} reports updated.${failed.length?` ${failed.length} failed: ${failed[0]}`:''}`,failed.length>0);});
-$('member-search').oninput=renderMembers;$('create-user-toggle').onclick=()=>{$('create-user-form').hidden=!$('create-user-form').hidden;};$('create-user-form').onsubmit=event=>{event.preventDefault();run(event.submitter,async()=>{const result=await request('/admin/users','POST',Object.fromEntries(new FormData(event.target)));event.target.reset();event.target.hidden=true;await loadAll();if(result.auditRecorded!==false)notify(`Account ${result.username} created.`);});};
-$('policy-reload').onclick=()=>run($('policy-reload'),async()=>{if(policyDirty&&!confirm('Discard your unsaved settings?'))return;policyDirty=false;await loadAll();notify('Saved settings loaded.');});
-$('policy-form').oninput=()=>{policyDirty=true;};$('policy-form').onsubmit=event=>{event.preventDefault();run(event.submitter,async()=>{const values=Object.fromEntries(new FormData(event.target));const result=await request('/admin/settings','PUT',{registrationOpen:values.registrationOpen==='true',aiEnabled:values.aiEnabled==='true',aiHourlyLimit:Number(values.aiHourlyLimit),revision:policyRevision});policyDirty=false;await loadAll();if(result.auditRecorded!==false)notify('Workspace settings saved and applied.');});};
-$('broadcast-form').onsubmit=event=>{event.preventDefault();run(event.submitter,async()=>{await request('/notify/publish','POST',{...Object.fromEntries(new FormData(event.target)),channel:'in-app'});event.target.reset();await loadAll();notify('Notification published to the selected audience.');});};
-$('audit-search').oninput=renderAudit;
-function csvCell(value){let text=String(value??'');if(/^[=+@-]/.test(text.trimStart())||/^[\t\r]/.test(text))text="'"+text;return '"'+text.replace(/"/g,'""')+'"';}
-function exportCsv(name,items,fields){if(!items.length){notify('No matching records to export.');return;}const csv=[fields.join(','),...items.map(item=>fields.map(field=>csvCell(item[field])).join(','))].join('\r\n');const url=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}));const link=document.createElement('a');link.href=url;link.download=`rescuepulse-${name}-${new Date().toISOString().slice(0,10)}.csv`;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
-$('queue-export').onclick=()=>exportCsv('queue',filteredReports(),['id','location','category','severity','status','assignee','dueAt','reportedBy','createdAt','archived']);$('audit-export').onclick=()=>exportCsv('audit',filteredEvents(),['id','createdAt','actor','action','target','details']);
-$('admin-refresh').onclick=()=>run($('admin-refresh'),async()=>{await loadAll();notify(policyDirty?'Lists refreshed. Your unsaved settings have been preserved.':'Workspace refreshed.');});
-$('admin-logout').onclick=async()=>{try{await request('/auth/logout','POST',{});}catch{}clearSession();location.replace('/sign-in.html');};
-(async()=>{if(!token){location.replace('/sign-in.html');return;}try{notify('Loading workspace…');await loadAll();notify('Administrator workspace ready.');}catch(error){$('admin-content').hidden=true;notify(error.message,true);}})();
+
+$('triage-form').onsubmit = event => {
+  event.preventDefault();
+  run(event.submitter, async () => {
+    const values = Object.fromEntries(new FormData(event.target));
+    values.dueAt = values.dueAt ? new Date(values.dueAt).toISOString() : '';
+    const saved = await updateTriage(triage, values);
+    if (!saved) return;
+    await loadAll();
+    await openTriage(saved.id);
+    $('triage-message').textContent = 'Coordination changes saved.';
+  }, $('triage-message'));
+};
+
+$('triage-archive').onclick = () => run($('triage-archive'), async () => {
+  if (!await updateTriage(triage, {archived: !triage.archived})) return;
+  $('triage-dialog').close();
+  await loadAll();
+  notify('Incident archive status updated.');
+}, $('triage-message'));
+
+$('triage-close').onclick = () => $('triage-dialog').close();
+
+$('queue-select-all').onchange = event => {
+  for (const report of shownReports()) {
+    if (event.target.checked) selected.add(report.id);
+    else selected.delete(report.id);
+  }
+  renderQueue();
+};
+
+for (const id of ['queue-status', 'queue-priority', 'queue-assignee']) {
+  $(id).onchange = () => { queuePage = 1; selected.clear(); renderQueue(); };
+}
+$('queue-search').oninput = () => { queuePage = 1; selected.clear(); renderQueue(); };
+$('queue-prev').onclick = () => { queuePage--; renderQueue(); };
+$('queue-next').onclick = () => { queuePage++; renderQueue(); };
+$('bulk-operation').onchange = renderBulkOptions;
+
+$('bulk-apply').onclick = () => run($('bulk-apply'), async () => {
+  if (selected.size > 50) throw new Error('Select no more than 50 reports per batch.');
+  const operation = $('bulk-operation').value, value = $('bulk-value').value;
+  if (!confirm(`Apply ${operation} to ${selected.size} selected reports?`)) return;
+  let completed = 0;
+  const failed = [];
+  for (const id of [...selected]) {
+    const report = reports.find(item => item.id === id);
+    if (!report) continue;
+    let change = {revision: report.revision};
+    if (operation === 'assign') change.assignee = value;
+    if (operation === 'status') change.status = value;
+    if (operation === 'severity') change.severity = value;
+    if (operation === 'archive') change.archived = true;
+    if (operation === 'restore') change.archived = false;
+    try {
+      await request(`/incident/${encodeURIComponent(id)}`, 'PATCH', change);
+      completed++;
+      selected.delete(id);
+    } catch (error) {
+      failed.push(error.message);
+    }
+  }
+  await loadAll();
+  notify(`${completed} reports updated.${failed.length ? ` ${failed.length} failed: ${failed[0]}` : ''}`, failed.length > 0);
+});
+
+$('member-search').oninput = renderMembers;
+$('create-user-toggle').onclick = () => { $('create-user-form').hidden = !$('create-user-form').hidden; };
+$('create-user-form').onsubmit = event => {
+  event.preventDefault();
+  run(event.submitter, async () => {
+    const result = await request('/admin/users', 'POST', Object.fromEntries(new FormData(event.target)));
+    event.target.reset();
+    event.target.hidden = true;
+    await loadAll();
+    if (result.auditRecorded !== false) notify(`Account ${result.username} created.`);
+  });
+};
+
+$('policy-reload').onclick = () => run($('policy-reload'), async () => {
+  if (policyDirty && !confirm('Discard your unsaved settings?')) return;
+  policyDirty = false;
+  await loadAll();
+  notify('Saved settings loaded.');
+});
+
+$('policy-form').oninput = () => { policyDirty = true; };
+$('policy-form').onsubmit = event => {
+  event.preventDefault();
+  run(event.submitter, async () => {
+    const values = Object.fromEntries(new FormData(event.target));
+    const result = await request('/admin/settings', 'PUT', {
+      registrationOpen: values.registrationOpen === 'true',
+      aiEnabled: values.aiEnabled === 'true',
+      aiHourlyLimit: Number(values.aiHourlyLimit),
+      revision: policyRevision
+    });
+    policyDirty = false;
+    await loadAll();
+    if (result.auditRecorded !== false) notify('Workspace settings saved and applied.');
+  });
+};
+
+$('broadcast-form').onsubmit = event => {
+  event.preventDefault();
+  run(event.submitter, async () => {
+    await request('/notify/publish', 'POST', {...Object.fromEntries(new FormData(event.target)), channel: 'in-app'});
+    event.target.reset();
+    await loadAll();
+    notify('Notification published to the selected audience.');
+  });
+};
+
+$('audit-search').oninput = renderAudit;
+
+function csvCell(value) {
+  let text = String(value ?? '');
+  if (/^[=+@-]/.test(text.trimStart()) || /^[\t\r]/.test(text)) text = "'" + text;
+  return '"' + text.replace(/"/g, '""') + '"';
+}
+
+function exportCsv(name, items, fields) {
+  if (!items.length) {
+    notify('No matching records to export.');
+    return;
+  }
+  const csv = [fields.join(','), ...items.map(item => fields.map(field => csvCell(item[field])).join(','))].join('\r\n');
+  const url = URL.createObjectURL(new Blob(['\uFEFF' + csv], {type: 'text/csv;charset=utf-8'}));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `rescuepulse-${name}-${new Date().toISOString().slice(0, 10)}.csv`;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+$('queue-export').onclick = () => exportCsv('queue', filteredReports(), ['id', 'location', 'category', 'severity', 'status', 'assignee', 'dueAt', 'reportedBy', 'createdAt', 'archived']);
+$('audit-export').onclick = () => exportCsv('audit', filteredEvents(), ['id', 'createdAt', 'actor', 'action', 'target', 'details']);
+
+$('admin-refresh').onclick = () => run($('admin-refresh'), async () => {
+  await loadAll();
+  notify(policyDirty ? 'Lists refreshed. Your unsaved settings have been preserved.' : 'Workspace refreshed.');
+});
+
+$('admin-logout').onclick = async () => {
+  try { await request('/auth/logout', 'POST', {}); } catch {}
+  clearSession();
+  location.replace('/sign-in.html');
+};
+
+(async () => {
+  if (!token) {
+    location.replace('/sign-in.html');
+    return;
+  }
+  try {
+    notify('Loading workspace…');
+    await loadAll();
+    notify('Administrator workspace ready.');
+  } catch (error) {
+    $('admin-content').hidden = true;
+    notify(error.message, true);
+  }
+})();
+
+function renderAdminMap() {
+  if (!adminMap) {
+    $('admin-map-status').textContent = 'Map unavailable. Incidents remain accessible in the queue.';
+    return;
+  }
+  const filter = $('admin-map-filter').value;
+  const visible = reports.filter(i => !i.archived && (
+    filter === 'ALL' ||
+    (filter === 'PENDING' && i.verificationStatus === 'PENDING') ||
+    (filter === 'VERIFIED' && i.verificationStatus === 'VERIFIED') ||
+    (filter === 'ACTIVE' && i.assignee && i.status !== 'RESOLVED')
+  ));
+  const count = adminMap.update(visible, report => openTriage(report.id).catch(e => notify(e.message, true)));
+  $('admin-map-status').textContent = `${count} mapped reports (${visible.length} in this filter view). Unlocated reports remain in the oversight queue.`;
+}
+
+function duplicateHints(report) {
+  return reports.filter(other => other.id !== report.id && other.category === report.category && Math.abs(new Date(other.createdAt) - new Date(report.createdAt)) <= 24 * 3600000 && (
+    (other.location || '').trim().toLowerCase() === (report.location || '').trim().toLowerCase() ||
+    (typeof other.latitude === 'number' && typeof report.latitude === 'number' && Math.abs(other.latitude - report.latitude) < 0.05 && Math.abs(other.longitude - report.longitude) < 0.05)
+  )).slice(0, 3);
+}
+
+function renderVerification(report) {
+  const status = report.verificationStatus || 'PENDING';
+  const hints = duplicateHints(report);
+  $('triage-review-status').textContent = `Status: ${status}${report.verificationReason ? ' · Reason: ' + report.verificationReason : ''}. ${hints.length ? `Heuristic duplicates detected: ${hints.map(x => x.id).join(', ')}. Review manually.` : 'No nearby identical reports detected.'}`;
+  $('triage-verify').disabled = status !== 'PENDING';
+  $('triage-reject').disabled = status !== 'PENDING';
+}
+
+async function reviewIncident(decision, reason = '') {
+  if (!triage) return;
+  const updated = await request(`/incident/${encodeURIComponent(triage.id)}/verify`, 'POST', {decision, reason, revision: triage.revision});
+  await loadAll();
+  await openTriage(updated.id);
+  notify(`Review recorded: ${decision}`);
+}
+
+$('triage-verify').onclick = () => run($('triage-verify'), async () => {
+  if (!confirm('Verify this emergency report based on evidence?')) return;
+  await reviewIncident('VERIFIED');
+}, $('triage-message'));
+
+$('triage-reject').onclick = () => run($('triage-reject'), async () => {
+  const reason = prompt('State rejection justification (5–500 characters):');
+  if (reason === null) return;
+  if (reason.trim().length < 5 || reason.length > 500) throw new Error('Rejection reason must be between 5 and 500 characters.');
+  await reviewIncident('REJECTED', reason);
+}, $('triage-message'));
+
+$('admin-map-filter').onchange = renderAdminMap;
+$('admin-shelters-toggle').onchange = e => adminMap?.toggleShelters(e.target.checked);
+$('admin-map-refresh').onclick = () => run($('admin-map-refresh'), loadAll);
+
+$('admin-weather').onclick = () => run($('admin-weather'), async () => {
+  const output = $('admin-weather-current');
+  output.textContent = 'Loading weather observations from Open-Meteo…';
+  if (!adminMap) throw new Error('Map unavailable');
+  const pos = adminMap.map.getCenter();
+  try {
+    const result = await RescueWeather.current(pos.lat, pos.lng);
+    const summary = RescueWeather.formatSummary(result);
+    output.textContent = `${summary.text} · ${summary.disclaimer}`;
+  } catch (e) {
+    output.textContent = e.message;
+  }
+}, $('admin-weather-current'));
+
+$('triage-weather-btn').onclick = () => run($('triage-weather-btn'), async () => {
+  const output = $('triage-weather-display');
+  output.textContent = 'Checking Open-Meteo weather for incident location…';
+  let lat = triage?.latitude, lon = triage?.longitude;
+  if (lat === null || lat === undefined || lon === null || lon === undefined) {
+    if (adminMap) {
+      const c = adminMap.map.getCenter();
+      lat = c.lat; lon = c.lng;
+    } else {
+      throw new Error('Coordinates not provided for this report.');
+    }
+  }
+  try {
+    const res = await RescueWeather.current(lat, lon);
+    const summary = RescueWeather.formatSummary(res);
+    output.textContent = `${summary.text} · ${summary.disclaimer}`;
+  } catch (e) {
+    output.textContent = e.message;
+  }
+}, $('triage-weather-display'));
+
+adminMap = window.RescueMap?.create('admin-map');
+
+$('triage-ai-generate').onclick = () => run($('triage-ai-generate'), async () => {
+  const report = triage;
+  if (!report) return;
+  const output = $('triage-ai-result');
+  output.hidden = false;
+  output.replaceChildren(element('p', 'Generating structured Gemini briefing…'));
+  try {
+    const result = await request(`/assistant/incidents/${encodeURIComponent(report.id)}/brief`, 'POST', {});
+    if (triage?.id !== report.id) return;
+    output.replaceChildren(element('h4', 'Incident Summary'), element('p', result.brief?.summary || 'No summary'));
+    for (const [label, key] of [['Suggested Coordination Actions', 'suggestedActions'], ['Information to Verify', 'missingInformation']]) {
+      output.append(element('h4', label));
+      const list = element('ul', '');
+      for (const item of result.brief?.[key] || []) list.append(element('li', item));
+      output.append(list);
+    }
+    output.append(element('small', `Gemini AI briefing · Generated at ${result.generatedAt || ''} · Human coordinator approval mandatory.`));
+  } catch (e) {
+    output.replaceChildren(element('p', e.message));
+  }
+}, $('triage-message'));
+
+$('triage-ai-priority').onclick = () => run($('triage-ai-priority'), async () => {
+  const report = triage;
+  if (!report) return;
+  const output = $('triage-ai-result');
+  output.hidden = false;
+  output.replaceChildren(element('p', 'Analyzing report priority…'));
+  try {
+    const result = await request(`/assistant/incidents/${encodeURIComponent(report.id)}/priority`, 'POST', {});
+    if (triage?.id !== report.id) return;
+    output.replaceChildren(
+      element('h4', `Priority Recommendation: ${result.suggestedPriority}`),
+      element('p', result.justification),
+      element('small', `${result.advisoryNotice}`)
+    );
+  } catch (e) {
+    output.replaceChildren(element('p', e.message));
+  }
+}, $('triage-message'));
+
+$('triage-ai-duplicates').onclick = () => run($('triage-ai-duplicates'), async () => {
+  const report = triage;
+  if (!report) return;
+  const output = $('triage-ai-result');
+  output.hidden = false;
+  output.replaceChildren(element('p', 'Scanning for potential duplicate reports…'));
+  try {
+    const result = await request(`/assistant/incidents/${encodeURIComponent(report.id)}/duplicates`, 'POST', {});
+    if (triage?.id !== report.id) return;
+    output.replaceChildren(element('h4', 'Duplicate Candidates Analysis'));
+    const list = result.duplicateCandidates || [];
+    if (!list.length) {
+      output.append(element('p', 'No potential duplicate reports identified by category or coordinates.'));
+    } else {
+      const ul = element('ul', '');
+      for (const d of list) {
+        ul.append(element('li', `Report ${d.id} (${d.category} · ${d.location}): ${d.similarityReason} [Status: ${d.verificationStatus}]`));
+      }
+      output.append(ul);
+    }
+    output.append(element('small', result.advisoryNotice || 'Advisory check only. Human verification mandatory.'));
+  } catch (e) {
+    output.replaceChildren(element('p', e.message));
+  }
+}, $('triage-message'));
+
+setInterval(() => {
+  if (!document.hidden && !loading && !policyDirty && !$('triage-dialog').open && token) {
+    loadAll().catch(e => notify(`Automatic refresh unavailable: ${e.message}`, true));
+  }
+}, 30000);

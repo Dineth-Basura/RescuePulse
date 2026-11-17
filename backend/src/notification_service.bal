@@ -29,7 +29,7 @@ function saveNotifications() returns error? {
 }
 
 function canReadNotice(User actor, Notification notice) returns boolean {
-    return notice.target == "team" || notice.target == actor.username;
+    return (notice.target == "team" && actor.role != "citizen") || notice.target == actor.username;
 }
 
 service /notify on httpListener {
@@ -108,4 +108,14 @@ service /notify on httpListener {
 
         }
     }
+}
+
+// System-generated notifications are persisted with the same access controls as broadcasts.
+function systemNotice(string target, string title, string body) returns error? {
+    if target == "" { return; }
+    Notification[] previous = notifications.clone();
+    notifications.push({id: uuid:createType4AsString(), target, title, body, createdAt: time:utcToString(time:utcNow())});
+    if notifications.length() > 1000 { _ = notifications.remove(0); }
+    var saved = saveNotifications();
+    if saved is error { notifications = previous; return saved; }
 }

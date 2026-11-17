@@ -1,5 +1,6 @@
-dataDir = "../../.runtime/test-data"
+# Ballerina test-only configuration. Never used by a running deployment.
+# Tests authenticate with this fixture password; it is not a production secret.
 adminPassword = "Test-only-password-2026"
 
-# Provider calls are disabled during tests.
-geminiApiKey = ""
+# Keep test-created accounts, incidents, and notifications out of app data.
+dataDir = "runtime-test-data"

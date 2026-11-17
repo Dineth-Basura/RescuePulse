@@ -207,4 +207,127 @@ service /assistant on httpListener {
         return requestGeminiBrief({observations: body, heuristicRiskIndex: risk * 100.0},
             "Explain these manually entered observations and this weighted heuristic index. Do not replace it with an invented AI forecast.");
     }
+
+    resource function post incidents/[string id]/priority(http:Request req) returns json|http:Response {
+        Incident snapshot;
+        lock {
+            User? actor = currentUser(req);
+            if actor is () { return aiError(401, "Please sign in"); }
+            var incident = incidents[id];
+            if incident is () { return aiError(404, "Incident not found"); }
+            if !visibleIncident(actor, incident) { return aiError(403, "You do not have access to this incident"); }
+            snapshot = incident.clone();
+        }
+        string suggestedPriority = "MEDIUM";
+        string justification = "Standard priority based on reported category.";
+        if snapshot.affectedPeople >= 10 || snapshot.category == "LANDSLIDE" || snapshot.severity == "CRITICAL" {
+            suggestedPriority = "CRITICAL";
+            justification = "High casualty estimate or critical hazard type reported.";
+        } else if snapshot.assistanceRequested || snapshot.affectedPeople > 0 || snapshot.category == "FLOOD" {
+            suggestedPriority = "HIGH";
+            justification = "Immediate assistance requested for active environmental emergency.";
+        } else if snapshot.severity == "LOW" {
+            suggestedPriority = "LOW";
+            justification = "Low urgency observation reported.";
+        }
+        return {
+            incidentId: id,
+            currentSeverity: snapshot.severity,
+            suggestedPriority: suggestedPriority,
+            justification: justification,
+            advisoryNotice: "AI priority recommendation is decision-support only. Coordinator verification is mandatory before action."
+        };
+    }
+
+    resource function post incidents/[string id]/duplicates(http:Request req) returns json|http:Response {
+        Incident snapshot;
+        Incident[] otherIncidents = [];
+        lock {
+            User? actor = currentUser(req);
+            if actor is () { return aiError(401, "Please sign in"); }
+            var incident = incidents[id];
+            if incident is () { return aiError(404, "Incident not found"); }
+            if !visibleIncident(actor, incident) { return aiError(403, "You do not have access to this incident"); }
+            snapshot = incident.clone();
+            foreach var other in incidents {
+                if other.id != id && !other.archived {
+                    otherIncidents.push(other.clone());
+                }
+            }
+        }
+        json[] potentialDuplicates = [];
+        string snapLoc = snapshot.location.trim().toLowerAscii();
+        foreach var other in otherIncidents {
+            boolean isCandidate = false;
+            string reason = "";
+            if other.category == snapshot.category && other.location.trim().toLowerAscii() == snapLoc {
+                isCandidate = true;
+                reason = "Matching category (" + snapshot.category + ") and district (" + snapshot.location + ")";
+            } else if snapshot.latitude is float && snapshot.longitude is float && other.latitude is float && other.longitude is float {
+                float latDiff = <float>snapshot.latitude - <float>other.latitude;
+                float lonDiff = <float>snapshot.longitude - <float>other.longitude;
+                if latDiff < 0.0 { latDiff = -latDiff; }
+                if lonDiff < 0.0 { lonDiff = -lonDiff; }
+                if latDiff < 0.05 && lonDiff < 0.05 {
+                    isCandidate = true;
+                    reason = "Close geographic coordinates (within ~5 km radius)";
+                }
+            }
+            if isCandidate {
+                potentialDuplicates.push({
+                    id: other.id,
+                    location: other.location,
+                    category: other.category,
+                    severity: other.severity,
+                    verificationStatus: other.verificationStatus,
+                    similarityReason: reason
+                });
+            }
+        }
+        return {
+            incidentId: id,
+            duplicateCandidates: potentialDuplicates,
+            advisoryNotice: "Potential duplicate detection is advisory. Human review required."
+        };
+    }
+
+    resource function post trends(http:Request req) returns json|http:Response {
+        lock {
+            User? actor = currentUser(req);
+            if actor is () { return aiError(401, "Please sign in"); }
+            if actor.role != "admin" { return aiError(403, "Coordinator access required"); }
+            int total = 0;
+            int verified = 0;
+            int pending = 0;
+            int activeMissions = 0;
+            int resolved = 0;
+            map<int> categoryCount = {};
+            map<int> severityCount = {};
+            foreach var inc in incidents {
+                if !inc.archived {
+                    total += 1;
+                    if inc.verificationStatus == "VERIFIED" { verified += 1; }
+                    if inc.verificationStatus == "PENDING" { pending += 1; }
+                    if inc.missionStatus == "ASSIGNED" || inc.missionStatus == "ACCEPTED" || inc.missionStatus == "EN_ROUTE" || inc.missionStatus == "ON_SCENE" {
+                        activeMissions += 1;
+                    }
+                    if inc.status == "RESOLVED" { resolved += 1; }
+                    int catC = categoryCount[inc.category] ?: 0;
+                    categoryCount[inc.category] = catC + 1;
+                    int sevC = severityCount[inc.severity] ?: 0;
+                    severityCount[inc.severity] = sevC + 1;
+                }
+            }
+            return {
+                totalActiveReports: total,
+                verifiedReports: verified,
+                pendingReview: pending,
+                inProgressMissions: activeMissions,
+                resolvedMissions: resolved,
+                categoryDistribution: categoryCount,
+                severityDistribution: severityCount,
+                generatedAt: time:utcToString(time:utcNow())
+            };
+        }
+    }
 }

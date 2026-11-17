@@ -6,7 +6,7 @@
 <title>RescuePulse | Response center</title>
 <link rel="icon" href="/assets/favicon.ico">
 <link rel="stylesheet" href="/dashboard.css">
-<script defer src="/dashboard.js">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""><link rel="stylesheet" href="/rescuepulse-2.css"><script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script><script defer src="/map.js"></script><script defer src="/weather-live.js"></script><script defer src="/dashboard.js">
 </script>
 </head>
 <body>
@@ -18,7 +18,7 @@
 <nav>
 <a class="selected" href="#overview">◉ &nbsp; Overview</a>
 <a href="#assessment">↗ &nbsp; Risk assessment</a>
-<a href="#incidents">☷ &nbsp; Incident board</a>
+<a href="#responder-map-panel">◉ &nbsp; Live map</a><a href="#incidents">☷ &nbsp; Incident board</a>
 <a href="/docs.html"> Help center</a>
 <a id="admin-link" href="/admin-dashboard.html" hidden>⚙ &nbsp; Administration</a>
 </nav>
@@ -37,6 +37,7 @@
 </h1>
 </div>
 <div class="header-right">
+<div style="display:inline-flex;align-items:center;gap:6px;font-size:12px;"><span style="color:#94a3b8;">My Status:</span><button id="responder-status-toggle" class="quiet" style="font-size:11px;padding:3px 9px;border-radius:12px;">AVAILABLE</button></div>
 <span id="connection">Connecting…</span>
 <time id="clock">
 </time>
@@ -74,7 +75,7 @@
 <small>Response progress</small>
 </article>
 </section>
-<div class="primary-grid">
+<section class="map-panel" id="responder-map-panel"><div class="panel-heading"><div><span class="eyebrow">FIELD OPERATIONS</span><h2>Assigned &amp; reported incidents</h2></div><span class="badge">LIVE ON REFRESH</span></div><p class="map-subtitle">Only your authorized reports with precise locations are mapped. Click a marker to open mission details.</p><div class="map-controls"><button id="responder-map-refresh" type="button" class="quiet">Refresh locations</button><button id="responder-weather" type="button" class="quiet">Weather at map center</button></div><p id="responder-map-status" class="map-status">Loading map…</p><div id="responder-map" class="operational-map" role="region" aria-label="Location map of visible incidents"></div><div class="map-legend"><span><i class="pin-critical"></i>Critical</span><span><i class="pin-high"></i>High</span><span><i class="pin-medium"></i>Medium</span><span><i class="pin-low"></i>Low</span></div><p id="responder-weather-current" class="map-status" role="status"></p></section><div class="primary-grid">
 <section class="panel" id="assessment">
 <div class="panel-heading">
 <div>
@@ -181,7 +182,7 @@
 <label>Incident type<select name="category"><option value="OTHER">Other</option><option value="FLOOD">Flood</option><option value="LANDSLIDE">Landslide</option><option value="STORM">Storm</option><option value="FIRE">Fire</option><option value="MEDICAL">Medical</option></select></label>
 <label>Description<input name="description" maxlength="2000" required placeholder="Describe what was observed and where">
 </label>
-<button class="primary" type="submit">Save incident</button>
+<div class="rp-fields"><label>Latitude (optional)<input name="latitude" id="report-latitude" type="number" step="any" min="-90" max="90" placeholder="Click map to select"></label><label>Longitude (optional)<input name="longitude" id="report-longitude" type="number" step="any" min="-180" max="180" placeholder="Click map to select"></label><label>Affected people<input name="affectedPeople" type="number" min="0" max="1000000" value="0"></label><label>Assistance needed<select name="assistanceRequested"><option value="false">No / information only</option><option value="true">Yes</option></select></label></div><p class="footnote">Click a location on the map above to choose coordinates. Don't report a real emergency through this prototype.</p><button class="primary" type="submit">Save incident</button>
 </form>
 <div class="table-wrap">
 <table>
@@ -215,8 +216,12 @@
 </section>
 <footer>RescuePulse · Response operations</footer>
 </main>
-<dialog id="incident-dialog"><div class="dialog-heading"><div><span class="eyebrow" id="detail-id"></span><h2 id="detail-title">Incident details</h2></div><button id="detail-close" class="quiet" aria-label="Close incident details">Close</button></div><p id="detail-meta" class="muted"></p><p id="detail-description"></p><div id="detail-message" role="status"></div>
-<form id="detail-form"><div class="fields"><label>Location<input name="location" maxlength="100" required></label><label>Type<select name="category"><option>OTHER</option><option>FLOOD</option><option>LANDSLIDE</option><option>STORM</option><option>FIRE</option><option>MEDICAL</option></select></label><label>Priority<select name="severity"><option>LOW</option><option>MEDIUM</option><option>HIGH</option><option>CRITICAL</option></select></label><label>Status<select name="status"><option value="OPEN">Open</option><option value="ACK">Acknowledged</option><option value="RESOLVED">Resolved</option></select></label><label id="assignment-field">Assigned responder<select name="assignee" id="detail-assignee"><option value="">Unassigned</option></select></label><label id="deadline-field">Response deadline (local time)<input name="dueAt" type="datetime-local"></label></div><label>Description<textarea name="description" rows="3" maxlength="2000" required></textarea></label><div class="actions"><button class="primary" type="submit">Save changes</button><button id="archive-incident" class="quiet" type="button">Archive incident</button></div></form>
+<dialog id="incident-dialog"><div class="dialog-heading"><div><span class="eyebrow" id="detail-id"></span><h2 id="detail-title">Incident details</h2></div><button id="detail-close" class="quiet" aria-label="Close incident details">Close</button></div><p id="detail-meta" class="muted"></p><p id="detail-description"></p>
+<div id="detail-attachment-wrap" style="display:none;margin:10px 0;padding:12px;background:#0f172a;border:1px solid #334155;border-radius:8px;"><strong style="font-size:12px;display:block;margin-bottom:6px;">Attached Photographic Evidence:</strong><img id="detail-attachment-img" style="max-height:140px;border-radius:6px;border:1px solid #475569;cursor:pointer;" alt="Attached photo"><br><small class="muted" id="detail-attachment-name"></small></div>
+<p id="detail-contact" class="muted" style="margin:4px 0;font-size:12px;"></p>
+<div style="margin:8px 0;"><button type="button" class="quiet" id="detail-weather-btn">Live Open-Meteo weather at location</button><p id="detail-weather-display" class="muted" style="margin:4px 0;font-size:12px;"></p></div>
+<div id="detail-message" role="status"></div>
+<div class="rp-mission" id="detail-mission"><h3>Rescue mission</h3><p id="detail-mission-status" class="muted"></p><div class="rp-actions" id="detail-mission-actions"></div></div><form id="detail-form"><div class="fields"><label>Location<input name="location" maxlength="100" required></label><label>Type<select name="category"><option>OTHER</option><option>FLOOD</option><option>LANDSLIDE</option><option>STORM</option><option>FIRE</option><option>MEDICAL</option></select></label><label>Priority<select name="severity"><option>LOW</option><option>MEDIUM</option><option>HIGH</option><option>CRITICAL</option></select></label><label>Status<select name="status"><option value="OPEN">Open</option><option value="ACK">Acknowledged</option><option value="RESOLVED">Resolved</option></select></label><label id="assignment-field">Assigned responder<select name="assignee" id="detail-assignee"><option value="">Unassigned</option></select></label><label id="deadline-field">Response deadline (local time)<input name="dueAt" type="datetime-local"></label></div><label>Description<textarea name="description" rows="3" maxlength="2000" required></textarea></label><div class="actions"><button class="primary" type="submit">Save changes</button><button id="archive-incident" class="quiet" type="button">Archive incident</button></div></form>
 <section class="detail-section ai-section"><div class="notification-heading"><h3>AI response brief</h3><span class="badge">GEMINI</span></div><p class="muted">Sends this report and up to five recent notes to Gemini. Avoid including sensitive personal details.</p><button id="ai-incident" class="quiet" type="button" disabled>Generate briefing</button><p id="ai-incident-status" role="status" class="muted">Checking AI availability...</p><div id="ai-incident-output" class="ai-output" hidden></div><button id="ai-handover-draft" type="button" class="quiet" hidden>Use handover as note draft</button><p class="footnote">Review AI suggestions against current conditions. They do not change assignments, priorities or dispatch anyone.</p></section>
 <section class="detail-section"><h3>Response notes</h3><div id="detail-notes"></div><form id="note-form"><label>Add a response update<textarea name="text" rows="3" maxlength="2000" required placeholder="Progress, observations or handover details"></textarea></label><button class="primary">Add note</button></form></section><section class="detail-section"><h3>Activity history</h3><div id="detail-history"></div></section></dialog>
 <dialog id="account-dialog"><div class="dialog-heading"><h2>Account settings</h2><button id="account-close" class="quiet">Close</button></div><p id="account-identity" class="muted"></p><h3>Change password</h3><form id="password-form"><label>Current password<input type="password" name="currentPassword" autocomplete="current-password" required></label><label>New password<input type="password" name="newPassword" autocomplete="new-password" minlength="8" maxlength="72" required></label><label>Confirm new password<input type="password" name="confirmPassword" autocomplete="new-password" minlength="8" maxlength="72" required></label><p id="password-message" role="status" class="muted"></p><button class="primary">Update password</button></form></dialog>

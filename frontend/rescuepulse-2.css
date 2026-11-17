@@ -1,0 +1,450 @@
+/* RescuePulse 2.0 — Modern Emergency UI/UX Stylesheet */
+:root {
+  --rp-navy: #080e1a;
+  --rp-surface: rgba(15, 23, 42, 0.75);
+  --rp-glass-border: rgba(255, 255, 255, 0.08);
+  --rp-coral: #ff6b4a;
+  --rp-coral-glow: rgba(255, 107, 74, 0.35);
+  --rp-teal: #14b8a6;
+  --rp-cyan: #06b6d4;
+  --rp-blue: #3b82f6;
+  --rp-amber: #f59e0b;
+  --rp-rose: #ef4444;
+  --rp-emerald: #10b981;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* Map Panels */
+.map-panel {
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--rp-glass-border);
+  border-radius: 16px;
+  background: var(--rp-surface);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  margin-bottom: 24px;
+  box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.5);
+  position: relative;
+}
+
+.map-panel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 10%;
+  right: 10%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--rp-cyan), transparent);
+}
+
+.map-panel .panel-heading {
+  padding: 20px 24px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.map-subtitle {
+  margin: 0 24px 16px;
+  color: #94a3b8;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.map-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 14px 24px;
+  background: rgba(8, 14, 26, 0.7);
+  border-top: 1px solid var(--rp-glass-border);
+  color: #cbd5e1;
+  font-size: 12px;
+  align-items: center;
+}
+
+.map-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.map-legend i {
+  width: 10px;
+  height: 10px;
+  display: inline-block;
+  border-radius: 50%;
+}
+
+.map-legend .pin-critical { background: var(--rp-rose); box-shadow: 0 0 8px var(--rp-rose); }
+.map-legend .pin-high { background: var(--rp-amber); box-shadow: 0 0 8px var(--rp-amber); }
+.map-legend .pin-medium { background: #eab308; }
+.map-legend .pin-low { background: var(--rp-teal); }
+
+.operational-map {
+  height: 420px;
+  width: 100%;
+  background: #090f1d;
+  color: #b8d3dd;
+  position: relative;
+  z-index: 1;
+}
+
+.map-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 0 24px 16px;
+}
+
+.map-controls label {
+  margin: 0;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.map-controls select {
+  margin: 2px 0;
+  min-width: 140px;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+
+.map-status {
+  color: #94a3b8;
+  font-size: 12px;
+  padding: 0 24px 14px;
+}
+
+/* Form Fields */
+.rp-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin: 16px 0;
+}
+
+.rp-fields label {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #cbd5e1;
+}
+
+.rp-fields label.full {
+  grid-column: 1 / -1;
+}
+
+.rp-fields input,
+.rp-fields select,
+.rp-fields textarea {
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(8, 14, 26, 0.8);
+  border: 1px solid var(--rp-glass-border);
+  border-radius: 8px;
+  padding: 11px 14px;
+  color: #f8fafc;
+  font-size: 13px;
+  margin-top: 6px;
+  transition: all 0.2s ease;
+}
+
+.rp-fields input:focus,
+.rp-fields select:focus,
+.rp-fields textarea:focus {
+  outline: none;
+  border-color: var(--rp-coral);
+  box-shadow: 0 0 0 3px rgba(255, 107, 74, 0.18);
+  background: rgba(8, 14, 26, 0.95);
+}
+
+/* Callouts */
+.rp-callout {
+  border-left: 3px solid var(--rp-cyan);
+  padding: 14px 18px;
+  background: rgba(6, 182, 212, 0.08);
+  border-radius: 0 10px 10px 0;
+  margin: 16px 0;
+  font-size: 13px;
+  color: #e0f2fe;
+  line-height: 1.6;
+}
+
+.rp-callout.warn {
+  border-color: var(--rp-amber);
+  background: rgba(245, 158, 11, 0.08);
+  color: #fef3c7;
+}
+
+.rp-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 16px 0;
+}
+
+.rp-actions button {
+  width: auto;
+}
+
+/* Mission & Step Tags */
+.rp-mission {
+  padding: 20px;
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid var(--rp-glass-border);
+  border-radius: 12px;
+  margin-top: 18px;
+}
+
+.rp-mission h3 {
+  margin: 0 0 10px;
+  font-size: 16px;
+  color: #f8fafc;
+}
+
+.rp-mission small {
+  display: block;
+  margin: 8px 0;
+  color: #94a3b8;
+}
+
+.rp-step {
+  display: inline-block;
+  border: 1px solid rgba(6, 182, 212, 0.4);
+  background: rgba(6, 182, 212, 0.15);
+  color: #67e8f9;
+  padding: 3px 10px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+}
+
+.rp-tag {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: #1e293b;
+  color: #cbd5e1;
+  white-space: nowrap;
+  letter-spacing: 0.5px;
+}
+
+.rp-tag.verified {
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  color: #6ee7b7;
+}
+
+.rp-tag.rejected {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
+}
+
+.rp-tag.pending {
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  color: #fde047;
+}
+
+/* Citizen Portal Layout */
+.rp-citizen-main {
+  max-width: 1240px;
+  margin: 30px auto 60px;
+  padding: 0 24px;
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 28px;
+  align-items: start;
+}
+
+.rp-citizen-main h1 {
+  font-size: clamp(26px, 3.5vw, 42px);
+  font-weight: 800;
+  letter-spacing: -1px;
+  margin: 8px 0 12px;
+  color: #ffffff;
+}
+
+.rp-citizen-main .panel {
+  padding: 28px;
+  border-radius: 16px;
+  background: var(--rp-surface);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--rp-glass-border);
+  box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.4);
+}
+
+.rp-citizen-main .operational-map {
+  height: 380px;
+}
+
+/* Incident Cards in List */
+.rp-incident-list {
+  display: grid;
+  gap: 16px;
+  margin: 20px 0;
+}
+
+.rp-incident-item {
+  padding: 20px;
+  background: rgba(8, 14, 26, 0.7);
+  border: 1px solid var(--rp-glass-border);
+  border-left: 4px solid var(--rp-coral);
+  border-radius: 12px;
+  transition: all 0.2s ease;
+}
+
+.rp-incident-item:hover {
+  border-color: rgba(255, 107, 74, 0.4);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+}
+
+.rp-incident-item h3 {
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 4px 0 8px;
+}
+
+.rp-incident-item p {
+  font-size: 13px;
+  color: #94a3b8;
+  margin: 8px 0;
+  line-height: 1.6;
+}
+
+.rp-incident-item small {
+  color: #64748b;
+  font-size: 11px;
+}
+
+.rp-incident-item button {
+  margin-top: 10px;
+}
+
+/* Citizen Identity Header Bar */
+.rp-identity {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 36px;
+  background: rgba(5, 8, 17, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--rp-glass-border);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+.rp-identity .brand {
+  font-size: 20px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: #fff;
+}
+
+.rp-identity small {
+  display: block;
+  font-size: 9px;
+  color: var(--rp-cyan);
+  letter-spacing: 1.5px;
+}
+
+#weather-current {
+  font-size: 13px;
+  color: #cbd5e1;
+  line-height: 1.65;
+  min-height: 24px;
+}
+
+#weather-current strong {
+  color: #fde047;
+}
+
+/* Leaflet Container Overrides */
+.leaflet-container {
+  font-family: inherit !important;
+  background: #090f1d !important;
+}
+
+.leaflet-tooltip {
+  background: rgba(15, 23, 42, 0.95) !important;
+  border: 1px solid var(--rp-glass-border) !important;
+  color: #f8fafc !important;
+  border-radius: 6px !important;
+  font-size: 12px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+}
+
+.leaflet-popup-content-wrapper {
+  background: rgba(15, 23, 42, 0.95) !important;
+  border: 1px solid var(--rp-glass-border) !important;
+  color: #f8fafc !important;
+  border-radius: 10px !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6) !important;
+}
+
+.leaflet-popup-tip {
+  background: #0f172a !important;
+}
+
+/* Responsive Media Queries */
+@media (max-width: 1024px) {
+  .rp-citizen-main {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  .operational-map {
+    height: 360px;
+  }
+}
+
+@media (max-width: 640px) {
+  .rp-identity {
+    padding: 14px 18px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .rp-citizen-main {
+    padding: 0 16px;
+    margin: 20px auto 40px;
+  }
+  .rp-citizen-main .panel {
+    padding: 20px 16px;
+  }
+  .rp-fields {
+    grid-template-columns: 1fr;
+  }
+  .operational-map {
+    height: 310px;
+  }
+  .map-panel .panel-heading {
+    padding: 16px 16px 10px;
+  }
+  .map-subtitle,
+  .map-controls,
+  .map-status,
+  .map-legend {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}

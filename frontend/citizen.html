@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RescuePulse | Community emergency reports</title>
+<link rel="icon" href="/assets/favicon.ico">
+<link rel="stylesheet" href="/dashboard.css">
+<link rel="stylesheet" href="/rescuepulse-2.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+<script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script defer src="/map.js"></script>
+<script defer src="/citizen.js"></script>
+</head>
+<body>
+<div class="rp-identity">
+  <a class="brand" href="/">✚ <span>RescuePulse <small>COMMUNITY REPORTING • DEMONSTRATION</small></span></a>
+  <div class="actions">
+    <span id="citizen-username" class="muted">Checking identity…</span>
+    <button class="quiet" id="citizen-refresh" type="button">Refresh</button>
+    <button class="quiet" id="citizen-logout" type="button">Sign out</button>
+  </div>
+</div>
+
+<div class="rp-citizen-main">
+  <section>
+    <div class="eyebrow">COMMUNITY / SUBMIT A REPORT</div>
+    <h1>Help starts with a clear report.</h1>
+    <p class="muted">Share an observed incident so a coordinator can review and route it through the demonstration workflow. This is not an emergency service.</p>
+    
+    <div class="rp-callout warn">
+      <strong>Real emergency?</strong> Contact your local emergency services directly. RescuePulse is a simulated coordination prototype and does not dispatch real responders.
+    </div>
+
+    <section class="panel">
+      <h2>Report a community emergency</h2>
+      <p class="muted">Required fields are marked automatically. Avoid entering private personal details.</p>
+      
+      <form id="citizen-report-form">
+        <div class="rp-fields">
+          <label>Incident type
+            <select name="category">
+              <option value="FLOOD">Flood</option>
+              <option value="LANDSLIDE">Landslide</option>
+              <option value="STORM">Storm</option>
+              <option value="FIRE">Fire</option>
+              <option value="MEDICAL">Medical</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </label>
+          <label>Urgency observed
+            <select name="severity">
+              <option value="MEDIUM">Medium</option>
+              <option value="LOW">Low</option>
+              <option value="HIGH">High</option>
+              <option value="CRITICAL">Critical</option>
+            </select>
+          </label>
+          <label class="full">District or area
+            <input name="location" maxlength="100" placeholder="e.g. Ratnapura" required>
+          </label>
+          <label class="full">What's happening?
+            <textarea name="description" rows="4" minlength="5" maxlength="2000" placeholder="Describe what you've observed, water levels, road conditions and what assistance is needed" required></textarea>
+          </label>
+          <label>Affected people (estimate)
+            <input name="affectedPeople" type="number" min="0" max="1000000" value="0" required>
+          </label>
+          <label>Assistance requested
+            <select name="assistanceRequested">
+              <option value="true">Yes</option>
+              <option value="false">No — share information only</option>
+            </select>
+          </label>
+          <label>Latitude (optional)
+            <input name="latitude" id="citizen-latitude" type="number" min="-90" max="90" step="any" placeholder="Select a map pin">
+          </label>
+          <label>Longitude (optional)
+            <input name="longitude" id="citizen-longitude" type="number" min="-180" max="180" step="any" placeholder="Select a map pin">
+          </label>
+          <label class="full">Contact number or info (optional)
+            <input name="contactInfo" maxlength="60" placeholder="e.g. 077 123 4567 for coordinator follow-up">
+          </label>
+          <label class="full">Photographic evidence (optional, JPG/PNG/WebP, max 5MB)
+            <input type="file" id="citizen-photo" accept="image/jpeg,image/png,image/webp">
+            <div id="photo-preview-wrap" style="display:none;margin-top:8px;align-items:center;gap:10px;">
+              <img id="photo-preview" style="max-height:100px;border-radius:6px;border:1px solid #334155;" alt="Photo preview">
+              <button type="button" id="photo-clear" class="quiet" style="font-size:11px;">Remove photo</button>
+            </div>
+          </label>
+        </div>
+        
+        <div class="rp-actions">
+          <button type="button" class="quiet" id="citizen-gps">Use my location</button>
+          <button type="button" class="quiet" id="citizen-clear-pin">Clear location</button>
+        </div>
+        
+        <p class="footnote">Click the map to position a location pin. Location coordinates are restricted to authorized response coordinators.</p>
+        <button class="primary" type="submit" id="citizen-submit">Submit for review →</button>
+        <p id="citizen-message" role="status" aria-live="polite" class="muted"></p>
+      </form>
+    </section>
+
+    <section class="panel">
+      <h2>My submitted reports</h2>
+      <p class="muted">Only reports submitted by your account appear here. Sensitive internal notes and responder names are protected.</p>
+      <div id="citizen-reports" class="rp-incident-list" aria-live="polite">
+        <p class="muted">Loading reports…</p>
+      </div>
+    </section>
+  </section>
+
+  <aside>
+    <section class="map-panel">
+      <div class="panel-heading">
+        <h2>Choose the location</h2>
+        <span class="badge">SRI LANKA</span>
+      </div>
+      <p class="map-subtitle">Click or tap the map to position a pin. Your own reports with coordinates are shown here.</p>
+      <div id="citizen-map" class="operational-map" role="region" aria-label="Interactive location picker"></div>
+      <p id="citizen-map-message" class="map-status" role="status">Loading map…</p>
+    </section>
+
+    <section class="panel">
+      <h2>How your report moves</h2>
+      <p class="muted">1. Submitted → 2. Coordinator review → 3. Responder assigned → 4. Mission tracked → 5. Outcome recorded.</p>
+      <div class="rp-callout">
+        Updates in this app are <strong>simulation data</strong>. Never rely on this prototype website for real time-sensitive disaster instructions.
+      </div>
+    </section>
+  </aside>
+</div>
+</body>
+</html>

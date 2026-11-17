@@ -1,9 +1,15 @@
-# Copy to Config.toml for a coordinator account. Use a password of at least 8 characters.
+# RescuePulse 2.0 Configuration Template
+# Copy to Config.toml and fill in your environment values.
+
 port = 8080
 dataDir = "runtime-data"
-adminPassword = ""
+adminPassword = "ChangeMeToAStrongPassword123!"
 
-# Server-side Gemini configuration. Never put the key in frontend code.
-geminiApiKey = ""
-geminiModel = "gemini-3.8-flash"
+# Server-side Gemini API Configuration (Disaster Analysis & Summarization)
+geminiApiKey = "YOUR_GEMINI_API_KEY"
+geminiModel = "gemini-2.5-flash"
 geminiMaxRequestsPerHour = 60
+
+# Choreo / Asgardeo Identity Platform Configuration (OIDC PKCE)
+choreoClientId = "YOUR_CHOREO_CLIENT_ID"
+choreoBaseUrl = "https://api.asgardeo.io/t/your-organization"
